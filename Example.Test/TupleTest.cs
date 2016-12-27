@@ -1,4 +1,5 @@
 ﻿using Autofac;
+using Autofac.Core;
 using Example.Dal;
 using Example.DalConcrete;
 using Example.Lib;
@@ -74,6 +75,26 @@ namespace Example.Test
 
         }
 
+        [TestMethod]
+        public void Tuple_NotRegistered()
+        {
 
+            try
+            {
+                var result = scope.Resolve<System.Tuple<IRootDal, IBusinessItemDal, IObjectPortal<IBusinessItem>, IBusinessObject>>();
+
+                Assert.Fail("Should throw an exception");
+            }
+            catch (DependencyResolutionException ex)
+            {
+
+            }
+            catch (Exception)
+            {
+                Assert.Fail("Unexpected exception type");
+            }
+
+
+        }
     }
 }

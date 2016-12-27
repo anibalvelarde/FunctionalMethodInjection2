@@ -29,6 +29,8 @@ namespace Example.Lib
             reg.HandleCreateChild((BusinessItem bo, Guid c) => bo.CreateChild(c));
             reg.HandleFetchChild((BusinessItem bo, BusinessItemDto d) => bo.FetchChild(d));
             reg.HandleFetchChild((BusinessItem bo, System.Tuple<CriteriaBase, BusinessItemDto> d) => bo.FetchChild(d.Item1, d.Item2));
+            reg.HandleUpdateChild((BusinessItem bo, Guid criteria, IBusinessItemDal d) => bo.UpdateChild(criteria, d));
+            reg.HandleInsertChild((BusinessItem bo, Guid criteria, IBusinessItemDal d) => bo.InsertChild(criteria, d));
         }
 
         public static readonly PropertyInfo<string> NameProperty = RegisterProperty<string>(c => c.Name);
@@ -69,8 +71,11 @@ namespace Example.Lib
 
         public void FetchChild(BusinessItemDto dto) // I only need the dependency within this method
         {
-            MarkAsChild();
-            this.FetchChildID = dto.FetchUniqueID;
+            using (BypassPropertyChecks)
+            {
+                MarkAsChild();
+                this.FetchChildID = dto.FetchUniqueID;
+            }
         }
 
 
@@ -80,9 +85,11 @@ namespace Example.Lib
         // ObjectPortal will bridge the two by turning the multiple paramters to a tuple
         public void FetchChild(CriteriaBase g, BusinessItemDto dto) // I only need the dependency within this method
         {
-            this.FetchChildID = dto.FetchUniqueID;
-            this.Criteria = g.Guid;
-
+            using (BypassPropertyChecks)
+            {
+                this.FetchChildID = dto.FetchUniqueID;
+                this.Criteria = g.Guid;
+            }
         }
 
         protected override void AddBusinessRules()
@@ -94,7 +101,10 @@ namespace Example.Lib
 
         public void CreateChild(Guid criteria)
         {
-            this.Criteria = criteria;
+            using (BypassPropertyChecks)
+            {
+                this.Criteria = criteria;
+            }
         }
 
         public void InsertChild(Guid criteria, IBusinessItemDal dal)

@@ -32,6 +32,11 @@ namespace Example.Lib
 
             regs.HandleFetchChild((BusinessItemList bo, Criteria criteria, System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal> d) 
                 => bo.FetchChild(criteria, d.Item1, d.Item2));
+
+            regs.HandleUpdateChildWithDependency((BusinessItemList bo, IObjectPortal<IBusinessItem> d) => bo.UpdateChild(d));
+            // TODO : Discuss - Same method. Assume this will be handled by the replacement for FieldManager.UpdateChildren()
+            regs.HandleInsertChildWithDependency((BusinessItemList bo, IObjectPortal<IBusinessItem> d) => bo.UpdateChild(d));
+
         }
 
         public void CreateChild(IObjectPortal<IBusinessItem> op)
@@ -72,16 +77,6 @@ namespace Example.Lib
 
         }
 
-        public void InsertChild(IObjectPortal<IBusinessItem> op)
-        {
-            foreach (var i in this)
-            {
-                if (i.IsDirty)
-                {
-                    op.UpdateChild(i, Guid.NewGuid());
-                }
-            }
-        }
 
         public void UpdateChild(IObjectPortal<IBusinessItem> op)
         {

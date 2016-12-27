@@ -122,7 +122,7 @@ namespace ObjectPortal
 
             T result = createT();
 
-            MarkNew(result);
+            MarkOld(result);
 
             var regs = CreateHandleRegistrations(result);
 
@@ -137,7 +137,7 @@ namespace ObjectPortal
 
             T result = createT();
 
-            MarkNew(result);
+            MarkOld(result);
 
             var regs = CreateHandleRegistrations(result);
 
@@ -155,7 +155,7 @@ namespace ObjectPortal
 
             T result = createT();
 
-            MarkNew(result);
+            MarkOld(result);
             MarkAsChild(result);
 
             var regs = CreateHandleRegistrations(result);
@@ -170,7 +170,7 @@ namespace ObjectPortal
 
             T result = createT();
 
-            MarkNew(result);
+            MarkOld(result);
             MarkAsChild(result);
 
             var regs = CreateHandleRegistrations(result);
@@ -188,25 +188,109 @@ namespace ObjectPortal
 
         public void Update(T bo)
         {
-            throw new NotImplementedException();
 
+            if (bo.IsDirty)
+            {
+                var regs = CreateHandleRegistrations(bo);
+                ObjectPortalMethod? method = null;
+
+                if (bo.IsNew)
+                {
+                    method = ObjectPortalMethod.Insert;
+                }
+                else
+                {
+                    method = ObjectPortalMethod.Update;
+                }
+
+                if (!regs.TryExecuteMethod(bo, method.Value, scope))
+                {
+                    throw new ObjectPortalOperationNotSupportedException($"Update (no criteria) not supported on {bo.GetType().FullName}");
+                }
+
+                MarkOld(bo);
+
+            }
         }
 
         public void Update<C>(T bo, C criteria)
         {
-            throw new NotImplementedException();
+            if (bo.IsDirty)
+            {
+                var regs = CreateHandleRegistrations(bo);
+                ObjectPortalMethod? method = null;
 
+                if (bo.IsNew)
+                {
+                    method = ObjectPortalMethod.Insert;
+                }
+                else
+                {
+                    method = ObjectPortalMethod.Update;
+                }
+
+                if (!regs.TryExecuteMethod(bo, method.Value, scope, criteria))
+                {
+                    throw new ObjectPortalOperationNotSupportedException($"UpdateC {criteria.GetType().FullName} not supported on {bo.GetType().FullName}");
+                }
+
+                MarkOld(bo);
+
+            }
         }
 
         public void UpdateChild(T bo)
         {
-            throw new NotImplementedException();
+
+            if (bo.IsDirty)
+            {
+                var regs = CreateHandleRegistrations(bo);
+                ObjectPortalMethod? method = null;
+
+                if (bo.IsNew)
+                {
+                    method = ObjectPortalMethod.InsertChild;
+                }
+                else
+                {
+                    method = ObjectPortalMethod.UpdateChild;
+                }
+
+                if (!regs.TryExecuteMethod(bo, method.Value, scope))
+                {
+                    throw new ObjectPortalOperationNotSupportedException($"Update (no criteria) not supported on {bo.GetType().FullName}");
+                }
+
+                MarkOld(bo);
+
+            }
 
         }
 
         public void UpdateChild<C>(T bo, C criteria)
         {
-            throw new NotImplementedException();
+            if (bo.IsDirty)
+            {
+                var regs = CreateHandleRegistrations(bo);
+                ObjectPortalMethod? method = null;
+
+                if (bo.IsNew)
+                {
+                    method = ObjectPortalMethod.InsertChild;
+                }
+                else
+                {
+                    method = ObjectPortalMethod.UpdateChild;
+                }
+
+                if (!regs.TryExecuteMethod(bo, method.Value, scope, criteria))
+                {
+                    throw new ObjectPortalOperationNotSupportedException($"UpdateChild {criteria.GetType().FullName} not supported on {bo.GetType().FullName}");
+                }
+
+                MarkOld(bo);
+
+            }
         }
     }
 

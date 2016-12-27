@@ -54,12 +54,14 @@ namespace Example.Lib
 
 
             regs.HandleCreate<Root, Guid, IObjectPortal<IBusinessItemList>>((bo, c, d) => bo.Create(c, d));
-            regs.HandleCreateWithDependency<Root, IObjectPortal<IBusinessItemList>>((bo, d) => bo.Create(d) );
+            regs.HandleCreateWithDependency<Root, IObjectPortal<IBusinessItemList>>((bo, d) => bo.Create(d));
 
 
             regs.HandleFetchWithDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Fetch(d));
             regs.HandleFetch((Root bo, Guid criteria, IObjectPortal<IBusinessItemList> d) => bo.Fetch(criteria, d));
 
+            regs.HandleUpdateWithDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Update(d));
+            regs.HandleInsertWithDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Insert(d));
 
         }
 
@@ -72,23 +74,35 @@ namespace Example.Lib
 
         private void Create(IObjectPortal<IBusinessItemList> op)
         {
-            BusinessItemList = op.CreateChild();
+            using (BypassPropertyChecks)
+            {
+                BusinessItemList = op.CreateChild();
+            }
         }
 
         // [HandleCreate]
         private void Create(Guid criteria, IObjectPortal<IBusinessItemList> op)
         {
-            BusinessItemList = op.CreateChild(criteria);
+            using (BypassPropertyChecks)
+            {
+                BusinessItemList = op.CreateChild(criteria);
+            }
         }
 
         private void Fetch(IObjectPortal<IBusinessItemList> op)
         {
-            BusinessItemList = op.FetchChild();
+            using (BypassPropertyChecks)
+            {
+                BusinessItemList = op.FetchChild();
+            }
         }
 
         private void Fetch(Guid criteria, IObjectPortal<IBusinessItemList> op)
         {
-            BusinessItemList = op.FetchChild(new Criteria() { Guid = criteria });
+            using (BypassPropertyChecks)
+            {
+                BusinessItemList = op.FetchChild(new Criteria() { Guid = criteria });
+            }
         }
 
         public void Insert(IObjectPortal<IBusinessItemList> op)

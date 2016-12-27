@@ -22,7 +22,8 @@ namespace ObjectPortal
     {
         Create, CreateChild,
         Fetch, FetchChild,
-        Update, UpdateChild
+        Update, UpdateChild,
+        Insert, InsertChild
     }
 
 
@@ -291,6 +292,84 @@ namespace ObjectPortal
         public static void HandleFetchChild<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
         {
             regs.Add<C>(ObjectPortalMethod.FetchChild, new HandleWithCriteriaDep<T, C, D>() { callMethod = a, method = ObjectPortalMethod.FetchChild });
+        }
+
+        public static void HandleUpdate<T>(this IHandleRegistrations<T> regs, Action<T> a)
+        {
+            regs.Add(ObjectPortalMethod.Update, new Handle<T>() { callMethod = a, method = ObjectPortalMethod.Update });
+        }
+
+        public static void HandleUpdateWithDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
+        {
+            regs.Add(ObjectPortalMethod.Update, new HandleDep<T, D>() { callMethod = a, method = ObjectPortalMethod.Update });
+        }
+
+        public static void HandleUpdate<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
+        {
+            regs.Add<C>(ObjectPortalMethod.Update, new HandleWithCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.Update });
+        }
+
+        public static void HandleUpdate<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
+        {
+            regs.Add<C>(ObjectPortalMethod.Update, new HandleWithCriteriaDep<T, C, D>() { callMethod = a, method = ObjectPortalMethod.Update });
+        }
+        public static void HandleUpdateChild<T>(this IHandleRegistrations<T> regs, Action<T> a)
+        {
+            regs.Add(ObjectPortalMethod.UpdateChild, new Handle<T>() { callMethod = a, method = ObjectPortalMethod.UpdateChild });
+        }
+
+        public static void HandleUpdateChildWithDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
+        {
+            regs.Add(ObjectPortalMethod.UpdateChild, new HandleDep<T, D>() { callMethod = a, method = ObjectPortalMethod.UpdateChild });
+        }
+
+        public static void HandleUpdateChild<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
+        {
+            regs.Add<C>(ObjectPortalMethod.UpdateChild, new HandleWithCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.UpdateChild });
+        }
+
+        public static void HandleUpdateChild<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
+        {
+            regs.Add<C>(ObjectPortalMethod.UpdateChild, new HandleWithCriteriaDep<T, C, D>() { callMethod = a, method = ObjectPortalMethod.UpdateChild });
+        }
+
+        public static void HandleInsert<T>(this IHandleRegistrations<T> regs, Action<T> a)
+        {
+            regs.Add(ObjectPortalMethod.Insert, new Handle<T>() { callMethod = a, method = ObjectPortalMethod.Insert });
+        }
+
+        public static void HandleInsertWithDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
+        {
+            regs.Add(ObjectPortalMethod.Insert, new HandleDep<T, D>() { callMethod = a, method = ObjectPortalMethod.Insert });
+        }
+
+        public static void HandleInsert<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
+        {
+            regs.Add<C>(ObjectPortalMethod.Insert, new HandleWithCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.Insert });
+        }
+
+        public static void HandleInsert<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
+        {
+            regs.Add<C>(ObjectPortalMethod.Insert, new HandleWithCriteriaDep<T, C, D>() { callMethod = a, method = ObjectPortalMethod.Insert });
+        }
+        public static void HandleInsertChild<T>(this IHandleRegistrations<T> regs, Action<T> a)
+        {
+            regs.Add(ObjectPortalMethod.InsertChild, new Handle<T>() { callMethod = a, method = ObjectPortalMethod.InsertChild });
+        }
+
+        public static void HandleInsertChildWithDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
+        {
+            regs.Add(ObjectPortalMethod.InsertChild, new HandleDep<T, D>() { callMethod = a, method = ObjectPortalMethod.InsertChild });
+        }
+
+        public static void HandleInsertChild<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
+        {
+            regs.Add<C>(ObjectPortalMethod.InsertChild, new HandleWithCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.InsertChild });
+        }
+
+        public static void HandleInsertChild<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
+        {
+            regs.Add<C>(ObjectPortalMethod.InsertChild, new HandleWithCriteriaDep<T, C, D>() { callMethod = a, method = ObjectPortalMethod.InsertChild });
         }
     }
 }

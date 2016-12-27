@@ -78,6 +78,8 @@ namespace Example.Test
 
             var result = portal.Fetch();
 
+            Assert.IsFalse(result.IsNew);
+            Assert.IsFalse(result.IsDirty);
             Assert.IsNotNull(result.BusinessItemList);
             Assert.AreEqual(2, result.BusinessItemList.Count);
         }
@@ -90,6 +92,8 @@ namespace Example.Test
 
             var result = portal.Fetch(criteria);
 
+            Assert.IsFalse(result.IsNew);
+            Assert.IsFalse(result.IsDirty);
             Assert.AreEqual(criteria, result.BusinessItemList[0].Criteria);
             Assert.AreEqual(Guid.Empty, result.BusinessItemList[0].UpdatedID);
 
@@ -98,6 +102,7 @@ namespace Example.Test
         [TestMethod]
         public void Root_BusinessRule()
         {
+            Assert.Fail("Not done yet");
 
             var portal = scope.Resolve<IObjectPortal<IRoot>>();
 
@@ -110,18 +115,31 @@ namespace Example.Test
         }
 
         [TestMethod]
+        public void Root_Insert()
+        {
+            var portal = scope.Resolve<IObjectPortal<IRoot>>();
+            var result = portal.Create();
+            
+            portal.Update(result);
+
+            Assert.AreNotEqual(Guid.Empty, result.BusinessItemList[0].UpdatedID);
+
+        }
+
+        [TestMethod]
         public void Root_Update()
         {
-            Assert.Fail();
-            //var portal = scope.Resolve<FetchRoot>();
-            //var result = portal();
-
-            //var update = scope.Resolve<Update<IRoot>>();
-
-            //update(result);
+            var portal = scope.Resolve<IObjectPortal<IRoot>>();
+            var result = portal.Fetch();
 
 
-            //Assert.AreNotEqual(Guid.Empty, result.BusinessItemList[0].UpdatedID);
+            result.BusinessItemList[0].Criteria = Guid.NewGuid();
+            result.BusinessItemList[1].Criteria = Guid.NewGuid();
+
+            portal.Update(result);
+
+            Assert.AreNotEqual(Guid.Empty, result.BusinessItemList[0].UpdatedID);
+            Assert.AreNotEqual(Guid.Empty, result.BusinessItemList[1].UpdatedID);
 
         }
 
