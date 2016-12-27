@@ -74,6 +74,7 @@
     <Compile Include="BusinessObject.cs" />
     <Compile Include="RootTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ScopedDataPortalTests.cs" />
     <Compile Include="TupleTest.cs" />
   </ItemGroup>
   <ItemGroup>

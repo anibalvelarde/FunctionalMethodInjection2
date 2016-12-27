@@ -1,0 +1,2 @@
+﻿<%@ ServiceHost Service="ObjectPortal.AutofacWcfPortal, ObjectPortal" 
+       Factory="Autofac.Integration.Wcf.AutofacServiceHostFactory, Autofac.Integration.Wcf"%>

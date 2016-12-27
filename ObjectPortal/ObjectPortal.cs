@@ -8,6 +8,7 @@ using Autofac;
 using System.Reflection;
 using System.Linq.Expressions;
 using Csla.Core;
+using Csla.Serialization.Mobile;
 
 namespace ObjectPortal
 {
@@ -17,7 +18,7 @@ namespace ObjectPortal
     /// </summary>
     /// <typeparam name="T"></typeparam>
     public class ObjectPortal<T> : Csla.Server.ObjectFactory, IObjectPortal<T>
-        where T : class, ITrackStatus
+        where T : class, ITrackStatus, IMobileObject
     {
 
         Func<T> createT;
@@ -186,7 +187,7 @@ namespace ObjectPortal
         }
 
 
-        public void Update(T bo)
+        public T Update(T bo)
         {
 
             if (bo.IsDirty)
@@ -211,33 +212,10 @@ namespace ObjectPortal
                 MarkOld(bo);
 
             }
+
+            return bo;
         }
 
-        public void Update<C>(T bo, C criteria)
-        {
-            if (bo.IsDirty)
-            {
-                var regs = CreateHandleRegistrations(bo);
-                ObjectPortalMethod? method = null;
-
-                if (bo.IsNew)
-                {
-                    method = ObjectPortalMethod.Insert;
-                }
-                else
-                {
-                    method = ObjectPortalMethod.Update;
-                }
-
-                if (!regs.TryExecuteMethod(bo, method.Value, scope, criteria))
-                {
-                    throw new ObjectPortalOperationNotSupportedException($"UpdateC {criteria.GetType().FullName} not supported on {bo.GetType().FullName}");
-                }
-
-                MarkOld(bo);
-
-            }
-        }
 
         public void UpdateChild(T bo)
         {
@@ -264,6 +242,7 @@ namespace ObjectPortal
                 MarkOld(bo);
 
             }
+            
 
         }
 
@@ -291,6 +270,7 @@ namespace ObjectPortal
                 MarkOld(bo);
 
             }
+            
         }
     }
 

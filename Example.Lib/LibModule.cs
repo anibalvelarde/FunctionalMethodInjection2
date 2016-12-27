@@ -15,9 +15,9 @@ namespace Example.Lib
         protected override void Load(ContainerBuilder builder)
         {
             base.Load(builder);
-            builder.RegisterType<Root>().As<IRoot>();
-            builder.RegisterType<BusinessItem>().As<IBusinessItem>();
-            builder.RegisterType<BusinessItemList>().As<IBusinessItemList>();
+            builder.RegisterType<Root>().As<IRoot>().AsSelf();
+            builder.RegisterType<BusinessItem>().As<IBusinessItem>().AsSelf();
+            builder.RegisterType<BusinessItemList>().As<IBusinessItemList>().AsSelf();
 
 
             // Need to find a way to make this generic

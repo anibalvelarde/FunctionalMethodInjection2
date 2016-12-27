@@ -72,6 +72,11 @@ namespace Example.Lib
             set { SetProperty(BusinessItemListProperty, value); }
         }
 
+        // Unfortunatly I need to have these so that they don't default to the "RunLocal"
+
+        private void DataPortal_Create() { }
+        private void DataPortal_Create(Guid criteria) { }
+
         private void Create(IObjectPortal<IBusinessItemList> op)
         {
             using (BypassPropertyChecks)

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Csla.Serialization.Mobile;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,7 +8,7 @@ using System.Text;
 namespace ObjectPortal
 {
     public interface IObjectPortal<T>
-        where T : Csla.Core.ITrackStatus
+        where T : Csla.Core.ITrackStatus, IMobileObject
     {
 
         T Create();
@@ -19,8 +20,7 @@ namespace ObjectPortal
         T Fetch<C>(C criteria);
         T FetchChild();
         T FetchChild<C>(C criteria);
-        void Update(T bo);
-        void Update<C>(T bo, C criteria);
+        T Update(T bo);
         void UpdateChild(T bo);
         void UpdateChild<C>(T bo, C criteria);
     }
