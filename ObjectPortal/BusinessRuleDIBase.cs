@@ -28,7 +28,7 @@ namespace ObjectPortal
         {
             base.Execute(context);
 
-            var db = context.Target as IDPBusinessObject;
+            var db = context.Target as IBusinessObjectScope;
             var scope = db.scope; // In the actual implementation we would not use a service locator. Limited by CSLA
 
             if(ExecuteMethodDI != null)

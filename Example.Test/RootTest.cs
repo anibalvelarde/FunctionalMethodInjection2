@@ -25,7 +25,7 @@ namespace Example.Test
 
                 ContainerBuilder builder = new ContainerBuilder();
 
-                builder.RegisterModule<ObjectPortal.AutofacModule>();
+                builder.RegisterModule<ObjectPortal.AutofacModuleServer>();
 
 
                 builder.RegisterType<RootDal>().AsImplementedInterfaces();

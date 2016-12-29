@@ -36,7 +36,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Csla, Version=4.6.500.0, Culture=neutral, PublicKeyToken=93be5fdc093e4c30, processorArchitecture=MSIL">
-      <HintPath>..\packages\CSLA-Core.4.6.500\lib\net45\Csla.dll</HintPath>
+      <HintPath>..\packages\CSLA-Core.4.6.500\lib\net46\Csla.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
@@ -80,6 +80,9 @@
       <Project>{09bb2c18-7f26-4931-914f-179bb2246f9b}</Project>
       <Name>ObjectPortal</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Analyzer Include="..\packages\CSLA-Core.4.6.500\analyzers\c#\Csla.Analyzers.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

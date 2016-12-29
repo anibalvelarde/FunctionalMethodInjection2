@@ -39,7 +39,7 @@ namespace ObjectPortal
                 var newT = createT();
 
                 // Tag on the scope
-                var dp = newT as IDPBusinessObject; // In the actual implementation we would not use a service locator. Limited by CSLA
+                var dp = newT as IBusinessObjectScope; // In the actual implementation we would not use a service locator. Limited by CSLA
                 dp.scope = scope;
 
                 return newT;

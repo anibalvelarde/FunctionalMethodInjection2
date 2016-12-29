@@ -22,13 +22,13 @@ namespace Example.Test.Service
 
             var builder = new ContainerBuilder();
 
-            builder.RegisterGeneric(typeof(ObjectPortal<>)).As(typeof(IObjectPortal<>));
-            builder.RegisterGeneric(typeof(HandleRegistrations<>)).As(typeof(IHandleRegistrations<>)).SingleInstance();
+
+            builder.RegisterModule<ObjectPortal.AutofacModuleServer>();
             builder.RegisterType<RootDal>().AsImplementedInterfaces();
             builder.RegisterType<BusinessItemDal>().AsImplementedInterfaces();
             builder.RegisterModule<LibModule>();
             builder.RegisterType<ObjectPortal.AutofacWcfPortal>();
-            builder.RegisterGeneric(typeof(CslaServerObjectPortal<>));
+            builder.RegisterGeneric(typeof(CslaServerObjectPortal<,>));
 
             container = builder.Build();
 
@@ -37,6 +37,7 @@ namespace Example.Test.Service
             AutofacHostFactory.Container = container;
 
             Csla.ApplicationContext.AuthenticationType = "Windows";
+            Csla.ApplicationContext.DataPortalActivator = container.Resolve<Func<IContainer, IDataPortalActivator>>()(container);
 
         }
 

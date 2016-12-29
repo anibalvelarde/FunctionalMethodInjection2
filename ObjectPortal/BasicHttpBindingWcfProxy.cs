@@ -6,10 +6,12 @@ using System.ServiceModel;
 using System.Text;
 using System.Threading.Tasks;
 using Csla.DataPortalClient;
+using Csla.WcfPortal;
+
 
 namespace ObjectPortal
 {
-    public class BasicHttpBindingWcfProxy : WcfProxy
+    public class BasicHttpBindingWcfProxy : MobileProxy
     {
 
         public BasicHttpBindingWcfProxy() : base()
@@ -17,32 +19,46 @@ namespace ObjectPortal
 
         }
 
-        protected override ChannelFactory<IWcfPortal> GetChannelFactory()
+        protected override CriteriaRequest ConvertRequest(CriteriaRequest request)
         {
-            //ChannelFactory<IWcfPortal> factory;
+            return base.ConvertRequest(request);
+        }
+        protected override WcfResponse ConvertResponse(WcfResponse response)
+        {
+            return base.ConvertResponse(response);
+        }
 
-            //factory = new ChannelFactory<IWcfPortal>("DataPortalEndpoint");
+        protected override WcfPortalClient GetProxy()
+        {
+            var address = new EndpointAddress(this.DataPortalUrl);
+            var client = new WcfPortalClient(this.Binding, address);
+            //client.ChannelFactory.Credentials.Windows.AllowedImpersonationLevel = TokenImpersonationLevel.Impersonation;
+            return client;
+        }
 
-            //return factory;
+        public new System.ServiceModel.Channels.Binding Binding
+        {
+            get
+            {
+                //ChannelFactory<IWcfPortal> factory;
+
+                //factory = new ChannelFactory<IWcfPortal>("DataPortalEndpoint");
+
+                //return factory;
 
 
-            ChannelFactory<Csla.DataPortalClient.IWcfPortal> factory = base.GetChannelFactory();
 
-            factory.Credentials.Windows.AllowedImpersonationLevel = TokenImpersonationLevel.Impersonation;
-
-            WSHttpBinding basicBinding = new WSHttpBinding();
-            //basicBinding.Security.Mode = SecurityMode.Transport;
-            //basicBinding.Security.Transport.ClientCredentialType = HttpClientCredentialType.None;
-            basicBinding.ReaderQuotas.MaxArrayLength = int.MaxValue;
-            basicBinding.ReaderQuotas.MaxStringContentLength = int.MaxValue;
-            basicBinding.ReaderQuotas.MaxBytesPerRead = int.MaxValue;
-            basicBinding.MaxBufferPoolSize = int.MaxValue;
-            basicBinding.MaxReceivedMessageSize = int.MaxValue;
-            basicBinding.ReaderQuotas.MaxArrayLength = int.MaxValue;
-
-            factory.Endpoint.Binding = basicBinding;
-
-            return factory;
+                BasicHttpBinding basicBinding = new BasicHttpBinding();
+                //basicBinding.Security.Mode = SecurityMode.Transport;
+                //basicBinding.Security.Transport.ClientCredentialType = HttpClientCredentialType.None;
+                basicBinding.ReaderQuotas.MaxArrayLength = int.MaxValue;
+                basicBinding.ReaderQuotas.MaxStringContentLength = int.MaxValue;
+                basicBinding.ReaderQuotas.MaxBytesPerRead = int.MaxValue;
+                basicBinding.MaxBufferPoolSize = int.MaxValue;
+                basicBinding.MaxReceivedMessageSize = int.MaxValue;
+                basicBinding.ReaderQuotas.MaxArrayLength = int.MaxValue;
+                return basicBinding;
+            }
         }
     }
 }

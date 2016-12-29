@@ -13,11 +13,11 @@ namespace ObjectPortal
 
     public interface IServerObjectPortal
     {
-        Task<DataPortalResult> Create<C>(C criteria, DataPortalContext context, bool isSync);
-        Task<DataPortalResult> Fetch<C>(C criteria, DataPortalContext context, bool isSync);
+        Task<DataPortalResult> Create(object criteria, DataPortalContext context, bool isSync);
+        Task<DataPortalResult> Fetch(object criteria, DataPortalContext context, bool isSync);
     }
 
-    public class CslaServerObjectPortal<T> : IServerObjectPortal
+    public class CslaServerObjectPortal<T, C> : IServerObjectPortal
         where T:class, ITrackStatus, IMobileObject
     {
         ILifetimeScope scope;
@@ -26,8 +26,10 @@ namespace ObjectPortal
             this.scope = scope;
         }
 
-        public Task<DataPortalResult> Create<C>(C criteria, DataPortalContext context, bool isSync)
+        public Task<DataPortalResult> Create(object crit, DataPortalContext context, bool isSync)
         {
+
+            var criteria = (C)crit;
 
             IObjectPortal<T> portal = scope.Resolve<IObjectPortal<T>>();
             object result = null;
@@ -50,8 +52,9 @@ namespace ObjectPortal
             throw new NotImplementedException();
         }
 
-        public Task<DataPortalResult> Fetch<C>(C criteria, DataPortalContext context, bool isSync)
+        public Task<DataPortalResult> Fetch(object crit, DataPortalContext context, bool isSync)
         {
+            var criteria = (C)crit;
 
             object result = null;
 

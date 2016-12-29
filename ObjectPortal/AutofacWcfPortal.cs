@@ -25,14 +25,14 @@ namespace ObjectPortal
         private ILifetimeScope scope;
         //private IDataPortalActivator _dataPortalActivator;
 
-        public AutofacWcfPortal(ILifetimeScope scope)
+        public AutofacWcfPortal()
         {
             //this._scope = scope;
             //// Since IDataPortalActivatorServer is internal it can't be on a public constructor
             //// AutofacWcfPortal can't be internal because it needs to be in the Web.Config of the IIS WCF Application
             //this._dataPortalActivator = scope.Resolve<Func<ILifetimeScope, IDataPortalActivator>>()(scope);
 
-            this.scope = scope;
+            //this.scope = scope;
                 
         }
 
@@ -45,7 +45,13 @@ namespace ObjectPortal
         [OperationBehavior(Impersonation = ImpersonationOption.Allowed)]
         public async Task<WcfResponse> Create(CreateRequest request)
         {
-            var portal = (IServerObjectPortal) scope.Resolve(typeof(CslaServerObjectPortal<>).MakeGenericType(request.ObjectType));
+
+            // TODO DIscuss
+            // At somepoint need to go from object to critieria type
+            // Pretty much with this we allow Autofac to do it
+
+            var portal = (IServerObjectPortal) scope.Resolve(typeof(CslaServerObjectPortal<,>)
+                .MakeGenericType(new Type[] { request.ObjectType, request.Criteria.GetType() }));
 
             object result;
 
@@ -56,10 +62,7 @@ namespace ObjectPortal
                 // At some point you need to go from object to actual type for
                 // the criteria object
 
-                result = await (Task<DataPortalResult>)portal.GetType()
-                                    .GetMethod("Create")
-                                    .MakeGenericMethod(request.Criteria.GetType())
-                                    .Invoke(portal, new object[] { request.Criteria, request.Context, true });
+                result = await portal.Create(request.Criteria, request.Context, true);
 
 
             }
@@ -79,16 +82,14 @@ namespace ObjectPortal
         public async Task<WcfResponse> Fetch(FetchRequest request)
         {
 
-            var portal = (IServerObjectPortal) scope.Resolve(typeof(CslaServerObjectPortal<>).MakeGenericType(request.ObjectType));
+            var portal = (IServerObjectPortal)scope.Resolve(typeof(CslaServerObjectPortal<,>)
+                .MakeGenericType(new Type[] { request.ObjectType, request.Criteria.GetType() }));
 
             object result;
 
             try
             {
-                result = await (Task<DataPortalResult>)portal.GetType()
-                                    .GetMethod("Fetch")
-                                    .MakeGenericMethod(request.Criteria.GetType())
-                                    .Invoke(portal, new object[] { request.Criteria, request.Context, true });
+                result = await portal.Fetch(request.Criteria, request.Context, true);
             }
             catch (Exception ex)
             {

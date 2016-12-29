@@ -11,7 +11,7 @@ namespace Example.Lib
     {
 
         //void AddChild();
-        //IBusinessItem AddCreateChild();
+        IBusinessItem CreateAddChild();
         //IBusinessItem AddCreateChild(Guid criteria);
     }
 }

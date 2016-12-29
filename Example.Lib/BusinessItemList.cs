@@ -6,6 +6,7 @@ using System.Text;
 using Autofac;
 using ObjectPortal;
 using Example.Dal;
+using Csla.Serialization.Mobile;
 
 namespace Example.Lib
 {
@@ -23,25 +24,39 @@ namespace Example.Lib
 
         private static void Handle(IHandleRegistrations<BusinessItemList> regs)
         {
-            regs.HandleCreateChildWithDependency((BusinessItemList bo, IObjectPortal<IBusinessItem> d) => bo.CreateChild(d));
+            regs.HandleCreateChildWithDependency((BusinessItemList bo, System.Tuple<IObjectPortal<IBusinessItem>, IMobileDependency<IObjectPortal<IBusinessItem>>> d) 
+                => bo.CreateChild(d.Item1, d.Item2));
+
             regs.HandleCreateChild((BusinessItemList bo, Guid criteria, IObjectPortal<IBusinessItem> d) 
                 => bo.CreateChild(criteria, d));
 
-            regs.HandleFetchChildWithDependency((BusinessItemList bo, System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal> d) 
-                => bo.FetchChild(d.Item1, d.Item2));
+            regs.HandleFetchChildWithDependency((BusinessItemList bo, System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal, IMobileDependency<IObjectPortal<IBusinessItem>>> d) 
+                => bo.FetchChild(d.Item1, d.Item2, d.Item3));
 
-            regs.HandleFetchChild((BusinessItemList bo, Criteria criteria, System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal> d) 
-                => bo.FetchChild(criteria, d.Item1, d.Item2));
+            regs.HandleFetchChild((BusinessItemList bo, Criteria criteria, System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal, IMobileDependency<IObjectPortal<IBusinessItem>>> d) 
+                => bo.FetchChild(criteria, d.Item1, d.Item2, d.Item3));
 
             regs.HandleUpdateChildWithDependency((BusinessItemList bo, IObjectPortal<IBusinessItem> d) => bo.UpdateChild(d));
-            // TODO : Discuss - Same method. Assume this will be handled by the replacement for FieldManager.UpdateChildren()
+            // TODO : Discuss - Same method. Assume this will be handled by the replacement for FieldManager.UpdateChildren() since it is a list
             regs.HandleInsertChildWithDependency((BusinessItemList bo, IObjectPortal<IBusinessItem> d) => bo.UpdateChild(d));
 
         }
 
-        public void CreateChild(IObjectPortal<IBusinessItem> op)
+        public IBusinessItem CreateAddChild()
+        {
+            var newChild = _newChild.Dependency.CreateChild();
+
+            this.Add(newChild);
+
+            return newChild;
+        }
+
+        IMobileDependency<IObjectPortal<IBusinessItem>> _newChild;
+
+        public void CreateChild(IObjectPortal<IBusinessItem> op, IMobileDependency<IObjectPortal<IBusinessItem>> newChild)
         {
             this.Add(op.CreateChild());
+            this._newChild = newChild;
         }
 
         public void CreateChild(Guid criteria, IObjectPortal<IBusinessItem> op)
@@ -49,7 +64,7 @@ namespace Example.Lib
             this.Add(op.CreateChild(criteria));
         }
 
-        public void FetchChild(IObjectPortal<IBusinessItem> op, IBusinessItemDal dal)
+        public void FetchChild(IObjectPortal<IBusinessItem> op, IBusinessItemDal dal, IMobileDependency<IObjectPortal<IBusinessItem>> newChild)
         {
             var dtos = dal.Fetch();
 
@@ -58,9 +73,10 @@ namespace Example.Lib
                 Add(op.FetchChild(d));
             }
 
+            this._newChild = newChild;
         }
 
-        public void FetchChild(CriteriaBase criteria, IObjectPortal<IBusinessItem> op, IBusinessItemDal dal)
+        public void FetchChild(CriteriaBase criteria, IObjectPortal<IBusinessItem> op, IBusinessItemDal dal, IMobileDependency<IObjectPortal<IBusinessItem>> newChild)
         {
 
             var dtos = dal.Fetch(criteria.Guid);
@@ -75,6 +91,7 @@ namespace Example.Lib
                 Add(op.FetchChild(Tuple.Create<CriteriaBase, BusinessItemDto>(criteria, d)));
             }
 
+            this._newChild = newChild;
         }
 
 
@@ -88,5 +105,27 @@ namespace Example.Lib
                 }
             }
         }
+
+        // TODO : Make these generic
+        // Probably take some changes to MobileFormatter but that's ok in the future
+
+        protected override void OnGetChildren(SerializationInfo info, MobileFormatter formatter)
+        {
+            base.OnGetChildren(info, formatter);
+
+            var mdInfo = formatter.SerializeObject(_newChild);
+            info.AddChild(nameof(_newChild), mdInfo.ReferenceId);
+
+        }
+
+        protected override void OnSetChildren(SerializationInfo info, MobileFormatter formatter)
+        {
+            base.OnSetChildren(info, formatter);
+
+            var mdInfo = info.Children[nameof(_newChild)];
+            _newChild = (IMobileDependency<IObjectPortal<IBusinessItem>>)  formatter.GetObject(mdInfo.ReferenceId);
+
+        }
+
     }
 }

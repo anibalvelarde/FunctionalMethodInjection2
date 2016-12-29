@@ -92,12 +92,12 @@ namespace Example.Lib
             }
         }
 
-        protected override void AddBusinessRules()
-        {
-            base.AddBusinessRules();
-            BusinessRules.AddRule(new BusinessRule(NameProperty));
-            BusinessRules.AddRule(new DependencyBusinessRule(NameProperty));
-        }
+        //protected override void AddBusinessRules()
+        //{
+        //    base.AddBusinessRules();
+        //    BusinessRules.AddRule(new BusinessRule(NameProperty));
+        //    BusinessRules.AddRule(new DependencyBusinessRule(NameProperty));
+        //}
 
         public void CreateChild(Guid criteria)
         {
@@ -131,41 +131,41 @@ namespace Example.Lib
             }
         }
 
-        internal class BusinessRule : BusinessRuleDIBase
-        {
+        //internal class BusinessRule : BusinessRuleDIBase
+        //{
 
-            public BusinessRule(IPropertyInfo nameProperty) : base(nameProperty)
-            {
-                InputProperties.Add(nameProperty);
-            }
+        //    public BusinessRule(IPropertyInfo nameProperty) : base(nameProperty)
+        //    {
+        //        InputProperties.Add(nameProperty);
+        //    }
 
-            protected override void Execute_(RuleContext context)
-            {
-                base.Execute_(context);
+        //    protected override void Execute_(RuleContext context)
+        //    {
+        //        base.Execute_(context);
 
-                context.Complete();
-            }
+        //        context.Complete();
+        //    }
 
-        }
+        //}
 
-        internal class DependencyBusinessRule : BusinessRuleDIBase
-        {
+        //internal class DependencyBusinessRule : BusinessRuleDIBase
+        //{
 
-            public DependencyBusinessRule(IPropertyInfo nameProperty) : base(nameProperty)
-            {
-                InputProperties.Add(nameProperty);
-                ExecuteMethodDI = (rc, s) => ExecuteDI(rc, s.Resolve<IBusinessItemDal>());
-            }
+        //    public DependencyBusinessRule(IPropertyInfo nameProperty) : base(nameProperty)
+        //    {
+        //        InputProperties.Add(nameProperty);
+        //        ExecuteMethodDI = (rc, s) => ExecuteDI(rc, s.Resolve<IBusinessItemDal>());
+        //    }
 
-            public void ExecuteDI(RuleContext context, IBusinessItemDal dependencies)
-            {
-                if (dependencies == null)
-                {
-                    context.AddErrorResult("Did not recieve dependency!");
-                }
-            }
+        //    public void ExecuteDI(RuleContext context, IBusinessItemDal dependencies)
+        //    {
+        //        if (dependencies == null)
+        //        {
+        //            context.AddErrorResult("Did not recieve dependency!");
+        //        }
+        //    }
 
-        }
+        //}
 
 
     }

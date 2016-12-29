@@ -1,5 +1,7 @@
 ﻿using Autofac;
 using Csla.DataPortalClient;
+using Csla.Reflection;
+using Csla.Serialization;
 using Example.DalConcrete;
 using Example.Lib;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -7,6 +9,10 @@ using ObjectPortal;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -31,15 +37,18 @@ namespace Example.Test
 
                 ContainerBuilder builder = new ContainerBuilder();
 
-                builder.RegisterGeneric(typeof(ObjectPortal_DPWrapper<>)).As(typeof(IObjectPortal<>));
+                builder.RegisterModule<ObjectPortal.AutofacModuleClient>();
                 builder.RegisterGeneric(typeof(HandleRegistrations<>)).As(typeof(IHandleRegistrations<>)).SingleInstance();
                 builder.RegisterModule<LibModule>();
 
                 clientContainer = builder.Build();
 
                 Csla.ApplicationContext.AuthenticationType = "Windows";
+                //Csla.ApplicationContext.DataPortalProxy = "Csla.DataPortalClient.WcfProxy, Csla";
                 Csla.ApplicationContext.DataPortalProxy = "ObjectPortal.BasicHttpBindingWcfProxy, ObjectPortal";
-                Csla.ApplicationContext.DataPortalUrlString = "http://localhost:62686/WcfPortal.svc";
+                Csla.ApplicationContext.DataPortalUrlString = "http://localhost/Example.Test.Service/WcfPortal.svc";
+
+                // OverrideCSLAConstructor();
 
             }
 
@@ -101,6 +110,57 @@ namespace Example.Test
             Assert.IsFalse(result.IsDirty);
             Assert.AreEqual(criteria, result.BusinessItemList[0].Criteria);
             Assert.AreEqual(Guid.Empty, result.BusinessItemList[0].UpdatedID);
+
+        }
+
+        [TestMethod]
+        public void Fetch_AddChild()
+        {
+
+            var portal = scope.Resolve<IObjectPortal<IRoot>>();
+
+            var result = portal.Fetch();
+
+            var count = result.BusinessItemList.Count;
+
+            var newBo = result.BusinessItemList.CreateAddChild();
+
+            Assert.IsNotNull(newBo);
+            Assert.AreEqual(count + 1, result.BusinessItemList.Count);
+
+        }
+
+        [TestMethod]
+
+        public void OverrideCSLAConstructor()
+        {
+
+            // TODO : Discuss - Only being used by Clone
+            // WCF always uses NetDataContractAttribute
+
+            var fields = typeof(Csla.Reflection.MethodCaller)
+                .GetFields(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
+                .Where(x => x.Name == @"_ctorCache").Single();
+
+            var dict = (Dictionary<Type, DynamicCtorDelegate>)fields.GetValue(null);
+
+            ConstructorInfo info = typeof(Csla.Serialization.BinaryFormatterWrapper)
+                .GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, Type.EmptyTypes, null);
+
+            Func<BinaryFormatterWrapper> func = () =>
+            {
+                var f = new BinaryFormatterWrapper();
+                f.Formatter.Context = new StreamingContext(StreamingContextStates.All, @"Keith");
+                return f;
+            };
+
+            MethodCallExpression method = Expression.Call(Expression.Constant(func.Target), func.Method);
+
+            var exp = Expression.Lambda<DynamicCtorDelegate>(method).Compile();
+
+            dict[typeof(BinaryFormatterWrapper)] = exp;
+
+            var formatter = Csla.Serialization.SerializationFormatterFactory.GetFormatter();
 
         }
 

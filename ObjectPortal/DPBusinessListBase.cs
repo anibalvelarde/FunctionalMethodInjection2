@@ -8,12 +8,12 @@ using System.Threading.Tasks;
 namespace ObjectPortal
 {
     [Serializable]
-    public class DtoBusinessListBase<T, C> : Csla.BusinessListBase<T, C>, IDPBusinessObject
+    public class DtoBusinessListBase<T, C> : Csla.BusinessListBase<T, C>, IDPBusinessObject, IBusinessObjectScope
         where C : Csla.Core.IEditableBusinessObject
         where T:DtoBusinessListBase<T, C>
     {
 
-        ILifetimeScope IDPBusinessObject.scope { get; set; } // In the actual implementation we would not use a service locator. Limited by CSLA
+        ILifetimeScope IBusinessObjectScope.scope { get; set; } // In the actual implementation we would not use a service locator. Limited by CSLA
 
 
     }

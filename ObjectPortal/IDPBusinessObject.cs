@@ -9,6 +9,16 @@ namespace ObjectPortal
 {
     public interface IDPBusinessObject : Csla.Core.ITrackStatus
     {
-        ILifetimeScope scope { get; set; } // In the actual implementation we would not use a service locator. Limited by CSLA
+
+
     }
+
+    internal interface IBusinessObjectScope
+    {
+        ILifetimeScope scope { get; set; } // In the actual implementation we would not use a service locator. Limited by CSLA
+
+
+
+    }
+
 }

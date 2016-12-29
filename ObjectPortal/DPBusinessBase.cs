@@ -12,12 +12,12 @@ namespace ObjectPortal
 
 
     [Serializable]
-    public class DPBusinessBase<T> : Csla.BusinessBase<T>, IDPBusinessObject
+    public class DPBusinessBase<T> : Csla.BusinessBase<T>, IDPBusinessObject, IBusinessObjectScope
         where T : DPBusinessBase<T>
     {
 
 
-        ILifetimeScope IDPBusinessObject.scope { get; set; } // In the actual implementation we would not use a service locator. Limited by CSLA
+        ILifetimeScope IBusinessObjectScope.scope { get; set; } // In the actual implementation we would not use a service locator. Limited by CSLA
 
 
     }

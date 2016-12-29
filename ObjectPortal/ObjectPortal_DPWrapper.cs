@@ -11,19 +11,24 @@ using System.Threading.Tasks;
 
 namespace ObjectPortal
 {
-    public class ObjectPortal_DPWrapper<T> : IObjectPortal<T>
+    internal class ObjectPortal_DPWrapper<T> : IObjectPortal<T>
         where T : class, IMobileObject, ITrackStatus
     {
         #region Fields
 
-        private readonly Type _concreteType;
+        readonly Type _concreteType;
+        Func<IMobileObjectWrapper<T>> createMobileObjectWrapper;
+        ILifetimeScope scope;
 
         #endregion
 
         #region ctor
 
-        public ObjectPortal_DPWrapper(ILifetimeScope scope)
+        public ObjectPortal_DPWrapper(ILifetimeScope scope, Func<IMobileObjectWrapper<T>> createFunc)
         {
+
+            this.scope = scope;
+
             //first check T and see if we are getting and abstract or interface type - if we are - we can use the scope to resolve T
             //if T is not an interface or abstract - then we don't even need to check the container for it - just use the type directly
             Type genericType = typeof(T);
@@ -51,6 +56,8 @@ namespace ObjectPortal
                 //if we were given a non-abstract type already - then just use it
                 _concreteType = typeof(T);
             }
+
+            this.createMobileObjectWrapper = createFunc;
         }
 
         #endregion
@@ -99,40 +106,53 @@ namespace ObjectPortal
 
         public T Create()
         {
-            Type type = typeof(T);
-            T retObj = default(T);
+            //Type type = typeof(T);
+            IMobileObjectWrapper<T> retObj;
 
-            if (type.IsInterface || type.IsAbstract)
-            {
-                retObj = (T)typeof(DataPortal).GetMethod("Create", Type.EmptyTypes)
-                                              .MakeGenericMethod(_concreteType)
-                                              .Invoke(null, null);
-            }
-            else
-            {
-                retObj = DataPortal.Create<T>();
-            }
+            // TODO : DIscuss
+            // I'm sending the interface type not the concrete type
+            // I can probably change thi sback
+            // Though it doesn't matter if we move away from RunLocalAttribute...I think
 
-            return retObj;
+            //if (type.IsInterface || type.IsAbstract)
+            //{
+            //    retObj = (IMobileObjectWrapper<T>)typeof(DataPortal).GetMethod("Create", Type.EmptyTypes)
+            //                                  .MakeGenericMethod(_concreteType)
+            //                                  .Invoke(null, null);
+            //}
+            //else
+            //{
+            retObj = DataPortal.Create<IMobileObjectWrapper<T>>();
+            //}
+
+            retObj.MobileDependencies.ForEach(x => x.ResetDependency(scope));
+
+            return retObj.BusinessObject;
         }
 
         public T Create<C>(C criteria)
         {
             Type type = typeof(T);
-            T retObj = default(T);
+            //T retObj = default(T);
 
-            if (type.IsInterface || type.IsAbstract)
-            {
-                retObj = (T)typeof(DataPortal).GetMethod("Create", new Type[] { typeof(object) })
-                                              .MakeGenericMethod(_concreteType)
-                                              .Invoke(null, new object[] { criteria });
-            }
-            else
-            {
-                retObj = DataPortal.Create<T>(criteria);
-            }
+            //if (type.IsInterface || type.IsAbstract)
+            //{
+            //    retObj = (T)typeof(DataPortal).GetMethod("Create", new Type[] { typeof(object) })
+            //                                  .MakeGenericMethod(_concreteType)
+            //                                  .Invoke(null, new object[] { criteria });
+            //}
+            //else
+            //{
+            //retObj = DataPortal.Create<T>(criteria);
+            //}
 
-            return retObj;
+            IMobileObjectWrapper<T, C> mow = scope.Resolve<IMobileObjectWrapper<T, C>>();
+
+            var retObj = DataPortal.Create<IMobileObjectWrapper<T, C>>(criteria);
+
+            retObj.MobileDependencies.ForEach(x => x.ResetDependency(scope));
+
+            return retObj.BusinessObject;
         }
 
         public async Task<T> CreateAsync<C>(C criteria)
@@ -221,39 +241,27 @@ namespace ObjectPortal
         public T Fetch()
         {
             Type type = typeof(T);
-            T retObj = default(T);
 
-            if (type.IsInterface || type.IsAbstract)
-            {
-                retObj = (T)typeof(DataPortal).GetMethod("Fetch", new Type[] { })
-                                              .MakeGenericMethod(_concreteType)
-                                              .Invoke(null, null);
-            }
-            else
-            {
-                retObj = DataPortal.Fetch<T>();
-            }
+            IMobileObjectWrapper<T> mow = scope.Resolve<IMobileObjectWrapper<T>>();
 
-            return retObj;
+            var retObj = DataPortal.Fetch<IMobileObjectWrapper<T>>();
+
+            retObj.MobileDependencies.ForEach(x => x.ResetDependency(scope));
+
+            return retObj.BusinessObject;
         }
 
         public T Fetch<C>(C criteria)
         {
             Type type = typeof(T);
-            T retObj = default(T);
 
-            if (type.IsInterface || type.IsAbstract)
-            {
-                retObj = (T)typeof(DataPortal).GetMethod("Fetch", new Type[] { typeof(object) })
-                                              .MakeGenericMethod(_concreteType)
-                                              .Invoke(null, new object[] { criteria });
-            }
-            else
-            {
-                retObj = DataPortal.Fetch<T>(criteria);
-            }
+            IMobileObjectWrapper<T, C> mow = scope.Resolve<IMobileObjectWrapper<T, C>>();
 
-            return retObj;
+            var retObj = DataPortal.Fetch<IMobileObjectWrapper<T, C>>(criteria);
+
+            retObj.MobileDependencies.ForEach(x => x.ResetDependency(scope));
+
+            return retObj.BusinessObject;
         }
 
         public async Task<T> FetchAsync(object criteria)
@@ -348,7 +356,9 @@ namespace ObjectPortal
         //Child DataPortal_XYZ methods because DataPortal_CreateChild - etc.. do not use the attributes for runlocal etc...
         public T CreateChild()
         {
-            return DataPortal.CreateChild<T>();
+            return (T)typeof(DataPortal).GetMethod("CreateChild", Type.EmptyTypes)
+                        .MakeGenericMethod(_concreteType)
+                        .Invoke(null, null);
         }
 
         //** NOTE: we do not need to do the concrete type resolution on the 

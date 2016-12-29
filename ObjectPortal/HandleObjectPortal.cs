@@ -245,6 +245,13 @@ namespace ObjectPortal
             regs.Add(ObjectPortalMethod.CreateChild, new HandleDep<T, D>() { callMethod = a, method = ObjectPortalMethod.CreateChild });
         }
 
+        /// <summary>
+        /// Register the method to call on ObjectPortal.Create with criteria and no dependencies
+        /// </summary>
+        /// <typeparam name="T">Business Object</typeparam>
+        /// <typeparam name="C">Criteria</typeparam>
+        /// <param name="regs"></param>
+        /// <param name="a"></param>
         public static void HandleCreateChild<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
         {
             regs.Add<C>(ObjectPortalMethod.CreateChild, new HandleWithCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.CreateChild });
