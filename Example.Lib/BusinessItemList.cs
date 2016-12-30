@@ -24,16 +24,28 @@ namespace Example.Lib
 
         private static void Handle(IHandleRegistrations<BusinessItemList> regs)
         {
-            regs.HandleCreateChildWithDependency((BusinessItemList bo, System.Tuple<IObjectPortal<IBusinessItem>, IMobileDependency<IObjectPortal<IBusinessItem>>> d) 
-                => bo.CreateChild(d.Item1, d.Item2));
+            //regs.HandleCreateChildWithDependency((BusinessItemList bo, System.Tuple<IObjectPortal<IBusinessItem>, IMobileDependency<IObjectPortal<IBusinessItem>>> d) 
+            //    => bo.CreateChild(d.Item1, d.Item2));
 
-            regs.HandleCreateChild((BusinessItemList bo, Guid criteria, IObjectPortal<IBusinessItem> d) 
-                => bo.CreateChild(criteria, d));
+            regs.HandleCreateChild(nameof(CreateChildNoCriteria));
 
-            regs.HandleFetchChildWithDependency((BusinessItemList bo, System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal, IMobileDependency<IObjectPortal<IBusinessItem>>> d) 
+            // TODO : Discuss
+            // Hmmm...if this wasn't a static method would that be better??
+            // Could just send in the method signatures
+            // Would be even better if the types could be derived
+            //regs.HandleTrySomething((Action<Guid>)CreateChildGuid);
+
+            //regs.HandleCreateChild((BusinessItemList bo, Guid criteria, IObjectPortal<IBusinessItem> d) 
+            //    => bo.CreateChildGuid(criteria, d));
+
+
+            // TODO Discuss - Cleaner then above but I wish I didn't have to define the generics
+            regs.HandleCreateChild<BusinessItemList, Guid>(nameof(CreateChildGuid));
+
+            regs.HandleFetchChildWithDependency((BusinessItemList bo, System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal, IMobileDependency<IObjectPortal<IBusinessItem>>> d)
                 => bo.FetchChild(d.Item1, d.Item2, d.Item3));
 
-            regs.HandleFetchChild((BusinessItemList bo, Criteria criteria, System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal, IMobileDependency<IObjectPortal<IBusinessItem>>> d) 
+            regs.HandleFetchChild((BusinessItemList bo, Criteria criteria, System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal, IMobileDependency<IObjectPortal<IBusinessItem>>> d)
                 => bo.FetchChild(criteria, d.Item1, d.Item2, d.Item3));
 
             regs.HandleUpdateChildWithDependency((BusinessItemList bo, IObjectPortal<IBusinessItem> d) => bo.UpdateChild(d));
@@ -51,15 +63,16 @@ namespace Example.Lib
             return newChild;
         }
 
+        // If we had properties on Lists I think we could transfer this as a CSLA Property
         IMobileDependency<IObjectPortal<IBusinessItem>> _newChild;
 
-        public void CreateChild(IObjectPortal<IBusinessItem> op, IMobileDependency<IObjectPortal<IBusinessItem>> newChild)
+        public void CreateChildNoCriteria(System.Tuple<IObjectPortal<IBusinessItem>, IMobileDependency<IObjectPortal<IBusinessItem>>> newChild)
         {
-            this.Add(op.CreateChild());
-            this._newChild = newChild;
+            this.Add(newChild.Item1.CreateChild());
+            this._newChild = newChild.Item2;
         }
 
-        public void CreateChild(Guid criteria, IObjectPortal<IBusinessItem> op)
+        public void CreateChildGuid(Guid criteria, IObjectPortal<IBusinessItem> op)
         {
             this.Add(op.CreateChild(criteria));
         }
@@ -123,7 +136,7 @@ namespace Example.Lib
             base.OnSetChildren(info, formatter);
 
             var mdInfo = info.Children[nameof(_newChild)];
-            _newChild = (IMobileDependency<IObjectPortal<IBusinessItem>>)  formatter.GetObject(mdInfo.ReferenceId);
+            _newChild = (IMobileDependency<IObjectPortal<IBusinessItem>>)formatter.GetObject(mdInfo.ReferenceId);
 
         }
 

@@ -216,6 +216,148 @@ namespace ObjectPortal
 
     public static class HandleRegistrationExtensions
     {
+
+        private static Action<T, D> CreateAction<T, D>(MethodInfo businessObjectMethod)
+        {
+            return (bo, d) => { businessObjectMethod.Invoke(bo, new object[] { d }); };
+        }
+
+        private static void _HandleDep<T, D>(IHandleRegistrations<T> regs, MethodInfo methodInfo, ObjectPortalMethod method)
+        {
+            var parameters = methodInfo.GetParameters();
+
+            // Method has dependencies
+            // Resolve each dependency
+
+            // Need to create (BusinessItem bo, Guid c) => bo.CreateChild(c)
+
+            if (parameters.Length == 1)
+            {
+
+                var createMethodInfo = CreateAction<T, D>(methodInfo);
+
+                regs.Add(method, new HandleDep<T, D>() { callMethod = createMethodInfo, method = method });
+
+                return;
+            }
+
+            throw new NotSupportedException("Only 1 parameter supported");
+
+        }
+
+        private static void Handle<T>(IHandleRegistrations<T> regs, string methodName, ObjectPortalMethod method)
+        {
+
+
+            var methodInfo = typeof(T).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+
+            var parameters = methodInfo.GetParameters();
+
+            if (parameters.Count() == 0)
+            {
+                Action<T> callMethod = null;
+
+                callMethod = (T bo) =>
+                {
+                    methodInfo.Invoke(bo, null);
+                };
+
+                regs.Add(method, new Handle<T>() { callMethod = callMethod, method = ObjectPortalMethod.Create });
+
+            }
+            else if (parameters.Count() == 1)
+            {
+
+                var createMethodInfo = typeof(HandleRegistrationExtensions).GetMethod(nameof(_HandleDep), BindingFlags.Static | BindingFlags.NonPublic)
+                    .MakeGenericMethod(new Type[] { typeof(T), parameters[0].ParameterType });
+
+                createMethodInfo.Invoke(null, new object[] { regs, methodInfo, method });
+
+            }
+
+        }
+
+
+
+
+        private static Action<T, C, D> CreateAction<T, C, D>(MethodInfo businessObjectMethod)
+        {
+            return (bo, c, d) => { businessObjectMethod.Invoke(bo, new object[] { c, d }); };
+        }
+
+        private static void _HandleCriteriaDep<T, C, D>(IHandleRegistrations<T> regs, MethodInfo methodInfo, ObjectPortalMethod method)
+        {
+            var parameters = methodInfo.GetParameters();
+
+            // Method has dependencies
+            // Resolve each dependency
+
+            // Need to create (BusinessItem bo, Guid c) => bo.CreateChild(c)
+
+            if (parameters.Length == 2)
+            {
+
+                var createMethodInfo = CreateAction<T, C, D>(methodInfo);
+
+                regs.Add(method, new HandleWithCriteriaDep<T, C, D>() { callMethod = createMethodInfo, method = method });
+
+                return;
+            }
+
+            throw new NotSupportedException("Only 2 parameter supported");
+
+        }
+
+        private static void Handle<T, C>(IHandleRegistrations<T> regs, string methodName, ObjectPortalMethod method)
+        {
+
+
+            var methodInfo = typeof(T).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+
+            var parameters = methodInfo.GetParameters();
+
+            if (parameters.Count() == 0)
+            {
+                throw new Exception("Method must take at least 1 parameter of criteria");
+            }
+            else if (parameters.Count() == 1)
+            {
+                // Criteria only
+
+                Action<T, C> callMethod = null;
+
+                callMethod = (T bo, C criteria) =>
+                {
+                    methodInfo.Invoke(bo, new object[] { criteria });
+                };
+
+                regs.Add(method, new HandleWithCriteria<T, C>() { callMethod = callMethod, method = ObjectPortalMethod.Create });
+
+
+            }
+            else if (parameters.Count() == 2)
+            {
+                // Criteria and Dependencies
+
+                var createMethodInfo = typeof(HandleRegistrationExtensions).GetMethod(nameof(_HandleCriteriaDep), BindingFlags.Static | BindingFlags.NonPublic)
+                    .MakeGenericMethod(new Type[] { typeof(T), parameters[0].ParameterType, parameters[1].ParameterType });
+
+                createMethodInfo.Invoke(null, new object[] { regs, methodInfo, method });
+
+            }
+
+        }
+
+        public static void HandleCreate<T>(this IHandleRegistrations<T> regs, string methodName)
+        {
+            Handle<T>(regs, methodName, ObjectPortalMethod.Create);
+        }
+
+        public static void HandleCreate<T, C>(this IHandleRegistrations<T> regs, string methodName)
+        {
+            Handle<T, C>(regs, methodName, ObjectPortalMethod.Create);
+        }
+
         public static void HandleCreate<T>(this IHandleRegistrations<T> regs, Action<T> a)
         {
             regs.Add(ObjectPortalMethod.Create, new Handle<T>() { callMethod = a, method = ObjectPortalMethod.Create });
@@ -238,6 +380,16 @@ namespace ObjectPortal
         public static void HandleCreateChild<T>(this IHandleRegistrations<T> regs, Action<T> a)
         {
             regs.Add(ObjectPortalMethod.CreateChild, new Handle<T>() { callMethod = a, method = ObjectPortalMethod.CreateChild });
+        }
+
+        public static void HandleCreateChild<T>(this IHandleRegistrations<T> regs, string methodName)
+        {
+            Handle(regs, methodName, ObjectPortalMethod.CreateChild);
+        }
+
+        public static void HandleCreateChild<T, C>(this IHandleRegistrations<T> regs, string methodName)
+        {
+            Handle<T, C>(regs, methodName, ObjectPortalMethod.CreateChild);
         }
 
         public static void HandleCreateChildWithDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
