@@ -24,10 +24,10 @@ namespace Example.Lib
 
         private static void Handle(IHandleRegistrations<BusinessItemList> regs)
         {
-            //regs.HandleCreateChildWithDependency((BusinessItemList bo, System.Tuple<IObjectPortal<IBusinessItem>, IMobileDependency<IObjectPortal<IBusinessItem>>> d) 
+            //regs.CreateChildWithDependency((BusinessItemList bo, System.Tuple<IObjectPortal<IBusinessItem>, IMobileDependency<IObjectPortal<IBusinessItem>>> d) 
             //    => bo.CreateChild(d.Item1, d.Item2));
 
-            regs.HandleCreateChild(nameof(CreateChildNoCriteria));
+            regs.CreateChild(nameof(CreateChildNoCriteria));
 
             // TODO : Discuss
             // Hmmm...if this wasn't a static method would that be better??
@@ -35,22 +35,22 @@ namespace Example.Lib
             // Would be even better if the types could be derived
             //regs.HandleTrySomething((Action<Guid>)CreateChildGuid);
 
-            //regs.HandleCreateChild((BusinessItemList bo, Guid criteria, IObjectPortal<IBusinessItem> d) 
+            //regs.CreateChild((BusinessItemList bo, Guid criteria, IObjectPortal<IBusinessItem> d) 
             //    => bo.CreateChildGuid(criteria, d));
 
+            // TODO Discuss - Cleaner then above
+            regs.CreateChild(nameof(CreateChildGuid));
 
-            // TODO Discuss - Cleaner then above but I wish I didn't have to define the generics
-            regs.HandleCreateChild<BusinessItemList, Guid>(nameof(CreateChildGuid));
+            //regs.FetchChildDependency((BusinessItemList bo, System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal, IMobileDependency<IObjectPortal<IBusinessItem>>> d)
+            //   => bo.FetchChild(d.Item1, d.Item2, d.Item3));
+            regs.FetchChild(nameof(FetchChild));
 
-            regs.HandleFetchChildWithDependency((BusinessItemList bo, System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal, IMobileDependency<IObjectPortal<IBusinessItem>>> d)
-                => bo.FetchChild(d.Item1, d.Item2, d.Item3));
+            //regs.FetchChildCriteria((BusinessItemList bo, Criteria criteria, System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal, IMobileDependency<IObjectPortal<IBusinessItem>>> d)
+             //   => bo.FetchChild(criteria, d.Item1, d.Item2, d.Item3));
 
-            regs.HandleFetchChild((BusinessItemList bo, Criteria criteria, System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal, IMobileDependency<IObjectPortal<IBusinessItem>>> d)
-                => bo.FetchChild(criteria, d.Item1, d.Item2, d.Item3));
-
-            regs.HandleUpdateChildWithDependency((BusinessItemList bo, IObjectPortal<IBusinessItem> d) => bo.UpdateChild(d));
+           // regs.HandleUpdateChildWithDependency((BusinessItemList bo, IObjectPortal<IBusinessItem> d) => bo.UpdateChild(d));
             // TODO : Discuss - Same method. Assume this will be handled by the replacement for FieldManager.UpdateChildren() since it is a list
-            regs.HandleInsertChildWithDependency((BusinessItemList bo, IObjectPortal<IBusinessItem> d) => bo.UpdateChild(d));
+            //regs.HandleInsertChildWithDependency((BusinessItemList bo, IObjectPortal<IBusinessItem> d) => bo.UpdateChild(d));
 
         }
 
@@ -77,34 +77,34 @@ namespace Example.Lib
             this.Add(op.CreateChild(criteria));
         }
 
-        public void FetchChild(IObjectPortal<IBusinessItem> op, IBusinessItemDal dal, IMobileDependency<IObjectPortal<IBusinessItem>> newChild)
+        public void FetchChild(System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal, IMobileDependency<IObjectPortal<IBusinessItem>>> d)
         {
-            var dtos = dal.Fetch();
+            var dtos = d.Item2.Fetch();
 
-            foreach (var d in dtos)
+            foreach (var dto in dtos)
             {
-                Add(op.FetchChild(d));
+                Add(d.Item1.FetchChild(dto));
             }
 
-            this._newChild = newChild;
+            this._newChild = d.Item3;
         }
 
-        public void FetchChild(CriteriaBase criteria, IObjectPortal<IBusinessItem> op, IBusinessItemDal dal, IMobileDependency<IObjectPortal<IBusinessItem>> newChild)
+        public void FetchChild(CriteriaBase criteria, System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal, IMobileDependency<IObjectPortal<IBusinessItem>>> d)
         {
 
-            var dtos = dal.Fetch(criteria.Guid);
+            var dtos = d.Item2.Fetch(criteria.Guid);
 
-            foreach (var d in dtos)
+            foreach (var dto in dtos)
             {
                 // We allow the Fetch calls (and delegates) to have multiple parameters
                 // But the IHandleXYZ interface can only have one criteria as a parameter
                 // with a tuple to handle multiple parameters
                 // ObjectPortal will bridge the two by turning the multiple paramters to a tuple
 
-                Add(op.FetchChild(Tuple.Create<CriteriaBase, BusinessItemDto>(criteria, d)));
+                Add(d.Item1.FetchChild(Tuple.Create<CriteriaBase, BusinessItemDto>(criteria, dto)));
             }
 
-            this._newChild = newChild;
+            this._newChild = d.Item3;
         }
 
 
@@ -125,7 +125,7 @@ namespace Example.Lib
         protected override void OnGetChildren(SerializationInfo info, MobileFormatter formatter)
         {
             base.OnGetChildren(info, formatter);
-
+      
             var mdInfo = formatter.SerializeObject(_newChild);
             info.AddChild(nameof(_newChild), mdInfo.ReferenceId);
 

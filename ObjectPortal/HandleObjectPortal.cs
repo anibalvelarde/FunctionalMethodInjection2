@@ -32,17 +32,33 @@ namespace ObjectPortal
         ObjectPortalMethod method { get; }
     }
 
-    public interface IHandleRegistrationNoCriteria<T> : IHandleRegistration
+    public interface IHandleRegistration<T> : IHandleRegistration
     {
         void ExecuteMethod(T obj, ILifetimeScope scope);
     }
 
-    public interface IHandleRegistrationWithCriteria<T, C> : IHandleRegistration
+    public interface IHandleRegistrationDependency<T, D> : IHandleRegistration<T>
+    {
+    }
+
+    public interface IHandleRegistrationCriteria<T>
+    {
+        Type CriteriaType { get; }
+
+        void ExecuteMethod(T obj, ILifetimeScope scope, object criteria);
+
+    }
+
+    public interface IHandleRegistrationCriteria<T, C> : IHandleRegistrationCriteria<T>, IHandleRegistration
     {
         void ExecuteMethod(T obj, ILifetimeScope scope, C criteria);
     }
 
-    public class Handle<T> : IHandleRegistrationNoCriteria<T>
+    public interface IHandleRegistration<T, C, D> : IHandleRegistrationCriteria<T, C>
+    {
+    }
+
+    public class Handle<T> : IHandleRegistration<T>
     {
         public Action<T> callMethod { get; set; }
 
@@ -55,7 +71,7 @@ namespace ObjectPortal
 
     }
 
-    public class HandleDep<T, D> : IHandleRegistrationNoCriteria<T>
+    public class HandleDependency<T, D> : IHandleRegistrationDependency<T, D>
     {
         public Action<T, D> callMethod { get; set; }
 
@@ -63,20 +79,14 @@ namespace ObjectPortal
 
         public void ExecuteMethod(T obj, ILifetimeScope scope)
         {
-            // TODO: Discuss sending in the scope
-            // I think we have to do this because the HandleRegistrations are Static (Singleton)
-
-            // Use type of D to create Action<T>
-
             D dep = scope.Resolve<D>();
 
             callMethod(obj, dep);
-
         }
 
     }
 
-    public class HandleWithCriteria<T, C> : IHandleRegistrationWithCriteria<T, C>
+    public class HandleCriteria<T, C> : IHandleRegistrationCriteria<T, C>
     {
         public Action<T, C> callMethod { get; set; }
 
@@ -86,13 +96,23 @@ namespace ObjectPortal
         {
             callMethod(obj, criteria);
         }
+
+        public void ExecuteMethod(T obj, ILifetimeScope scope, object criteria)
+        {
+            ExecuteMethod(obj, scope, (C)criteria);
+        }
+
+        public Type CriteriaType { get { return typeof(C); } }
+
     }
 
-    public class HandleWithCriteriaDep<T, C, D> : IHandleRegistrationWithCriteria<T, C>
+    public class Handle<T, C, D> : IHandleRegistration<T, C, D>
     {
         public Action<T, C, D> callMethod { get; set; }
 
         public ObjectPortalMethod method { get; set; }
+
+        public Type CriteriaType { get { return typeof(C); } }
 
         public void ExecuteMethod(T obj, ILifetimeScope scope, C criteria)
         {
@@ -103,6 +123,12 @@ namespace ObjectPortal
             callMethod(obj, criteria, dep);
 
         }
+
+        public void ExecuteMethod(T obj, ILifetimeScope scope, object criteria)
+        {
+            ExecuteMethod(obj, scope, (C)criteria);
+        }
+
     }
 
     internal interface IHandleRegistrations
@@ -120,16 +146,18 @@ namespace ObjectPortal
 
     public interface IHandleRegistrations<T>
     {
-        void Add(ObjectPortalMethod method, IHandleRegistrationNoCriteria<T> reg);
-        void Add<C>(ObjectPortalMethod method, IHandleRegistrationWithCriteria<T, C> reg);
-
+        void Add(ObjectPortalMethod method, IHandleRegistration<T> reg);
+        void Add<C>(ObjectPortalMethod method, IHandleRegistrationCriteria<T, C> reg);
+        bool IsRegistered(Type t);
     }
 
     public class HandleRegistrations<T> : IHandleRegistrations<T>, IHandleRegistrations
     {
+        ILifetimeScope rootContainer;
 
-        public HandleRegistrations()
+        public HandleRegistrations(ILifetimeScope rootContainer) // this should be marked SingleInstance so this should be the root container
         {
+            this.rootContainer = rootContainer;
 
             // Pass this object to the static Handle method defined for the type
 
@@ -158,38 +186,40 @@ namespace ObjectPortal
 
         }
 
+        public bool IsRegistered(Type t)
+        {
+            return rootContainer.IsRegistered(t);
+        }
+
         private List<IHandleRegistration> regs { get; set; } = new List<IHandleRegistration>();
 
-        public void Add(ObjectPortalMethod method, IHandleRegistrationNoCriteria<T> reg)
+        public void Add(ObjectPortalMethod method, IHandleRegistration<T> reg)
         {
-            if (regs.OfType<IHandleRegistrationNoCriteria<T>>().Where(r => r.method == method).FirstOrDefault() != null)
+            if (regs.OfType<IHandleRegistration<T>>().Where(r => r.method == method).FirstOrDefault() != null)
             {
                 throw new ObjectPortalOperationNotSupportedException($"Key is already present in registrations {method.ToString()}");
             }
-
 
             regs.Add(reg);
         }
 
 
-        public void Add<C>(ObjectPortalMethod method, IHandleRegistrationWithCriteria<T, C> reg)
+        public void Add<C>(ObjectPortalMethod method, IHandleRegistrationCriteria<T, C> reg)
         {
-            if (regs.OfType<IHandleRegistrationWithCriteria<T, C>>().Where(r => r.method == method).FirstOrDefault() != null)
+            if (regs.OfType<IHandleRegistrationCriteria<T, C>>().Where(r => r.method == method).FirstOrDefault() != null)
             {
-                throw new ObjectPortalOperationNotSupportedException($"Key is already present in registrations {method.ToString()}");
+                throw new ObjectPortalOperationNotSupportedException($"Key is already present in registrations {method.ToString()} with type ${typeof(C).FullName}");
             }
 
 
             regs.Add(reg);
         }
-
-
 
 
         bool IHandleRegistrations.TryExecuteMethod(object obj, ObjectPortalMethod method, ILifetimeScope scope)
         {
 
-            var reg = regs.OfType<IHandleRegistrationNoCriteria<T>>().Where(r => r.method == method).SingleOrDefault();
+            var reg = regs.OfType<IHandleRegistration<T>>().Where(r => r.method == method).SingleOrDefault();
 
             if (reg == null) { return false; }
 
@@ -202,7 +232,19 @@ namespace ObjectPortal
 
         bool IHandleRegistrations.TryExecuteMethod<C>(object obj, ObjectPortalMethod method, ILifetimeScope scope, C criteria)
         {
-            var reg = regs.OfType<IHandleRegistrationWithCriteria<T, C>>().Where(r => r.method == method).SingleOrDefault();
+            var reg = regs.OfType<IHandleRegistrationCriteria<T, C>>().Where(r => r.method == method).SingleOrDefault();
+
+            if (reg == null)
+            {
+
+                // TODO : Discuss
+                // This works..but...
+                var regB = regs.OfType<IHandleRegistrationCriteria<T>>().SingleOrDefault(r => r.CriteriaType.IsAssignableFrom(typeof(C)));
+
+                regB.ExecuteMethod((T)obj, scope, criteria);
+
+                return true;
+            }
 
             if (reg == null) { return false; }
 
@@ -222,313 +264,273 @@ namespace ObjectPortal
             return (bo, d) => { businessObjectMethod.Invoke(bo, new object[] { d }); };
         }
 
-        private static void _HandleDep<T, D>(IHandleRegistrations<T> regs, MethodInfo methodInfo, ObjectPortalMethod method)
-        {
-            var parameters = methodInfo.GetParameters();
-
-            // Method has dependencies
-            // Resolve each dependency
-
-            // Need to create (BusinessItem bo, Guid c) => bo.CreateChild(c)
-
-            if (parameters.Length == 1)
-            {
-
-                var createMethodInfo = CreateAction<T, D>(methodInfo);
-
-                regs.Add(method, new HandleDep<T, D>() { callMethod = createMethodInfo, method = method });
-
-                return;
-            }
-
-            throw new NotSupportedException("Only 1 parameter supported");
-
-        }
-
-        private static void Handle<T>(IHandleRegistrations<T> regs, string methodName, ObjectPortalMethod method)
-        {
-
-
-            var methodInfo = typeof(T).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
-
-            var parameters = methodInfo.GetParameters();
-
-            if (parameters.Count() == 0)
-            {
-                Action<T> callMethod = null;
-
-                callMethod = (T bo) =>
-                {
-                    methodInfo.Invoke(bo, null);
-                };
-
-                regs.Add(method, new Handle<T>() { callMethod = callMethod, method = ObjectPortalMethod.Create });
-
-            }
-            else if (parameters.Count() == 1)
-            {
-
-                var createMethodInfo = typeof(HandleRegistrationExtensions).GetMethod(nameof(_HandleDep), BindingFlags.Static | BindingFlags.NonPublic)
-                    .MakeGenericMethod(new Type[] { typeof(T), parameters[0].ParameterType });
-
-                createMethodInfo.Invoke(null, new object[] { regs, methodInfo, method });
-
-            }
-
-        }
-
-
-
-
         private static Action<T, C, D> CreateAction<T, C, D>(MethodInfo businessObjectMethod)
         {
             return (bo, c, d) => { businessObjectMethod.Invoke(bo, new object[] { c, d }); };
         }
 
-        private static void _HandleCriteriaDep<T, C, D>(IHandleRegistrations<T> regs, MethodInfo methodInfo, ObjectPortalMethod method)
+        private static void HandleDependency<T, D>(IHandleRegistrations<T> regs, MethodInfo methodInfo, ObjectPortalMethod method)
         {
-            var parameters = methodInfo.GetParameters();
 
             // Method has dependencies
             // Resolve each dependency
 
             // Need to create (BusinessItem bo, Guid c) => bo.CreateChild(c)
 
-            if (parameters.Length == 2)
-            {
 
-                var createMethodInfo = CreateAction<T, C, D>(methodInfo);
+            var createMethodInfo = CreateAction<T, D>(methodInfo);
 
-                regs.Add(method, new HandleWithCriteriaDep<T, C, D>() { callMethod = createMethodInfo, method = method });
+            regs.Add(method, new HandleDependency<T, D>() { callMethod = createMethodInfo, method = method });
 
-                return;
-            }
-
-            throw new NotSupportedException("Only 2 parameter supported");
 
         }
 
-        private static void Handle<T, C>(IHandleRegistrations<T> regs, string methodName, ObjectPortalMethod method)
+        private static void HandleCriteria<T, C>(IHandleRegistrations<T> regs, MethodInfo methodInfo, ObjectPortalMethod method)
+        {
+
+            // Method has dependencies
+            // Resolve each dependency
+
+            // Need to create (BusinessItem bo, Guid c) => bo.CreateChild(c)
+
+
+            var createMethodInfo = CreateAction<T, C>(methodInfo);
+
+            regs.Add(method, new HandleCriteria<T, C>() { callMethod = createMethodInfo, method = method });
+
+        }
+
+        private static void HandleCriteriaDependency<T, C, D>(IHandleRegistrations<T> regs, MethodInfo methodInfo, ObjectPortalMethod method)
+        {
+
+            // Method has dependencies
+            // Resolve each dependency
+
+            // Need to create (BusinessItem bo, Guid c) => bo.CreateChild(c)
+
+
+            var createMethodInfo = CreateAction<T, C, D>(methodInfo);
+
+            regs.Add(method, new Handle<T, C, D>() { callMethod = createMethodInfo, method = method });
+
+
+        }
+
+        //private static void HandleCriteria<T>(IHandleRegistrations<T> regs, string methodName, ObjectPortalMethod method)
+        //{
+
+
+        //    var methodInfo = typeof(T).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+
+        //    var parameters = methodInfo.GetParameters();
+
+        //    if (parameters.Count() == 0)
+        //    {
+        //        Action<T> callMethod = null;
+
+        //        callMethod = (T bo) =>
+        //        {
+        //            methodInfo.Invoke(bo, null);
+        //        };
+
+        //        regs.Add(method, new Handle<T>() { callMethod = callMethod, method = ObjectPortalMethod.Create });
+
+        //    }
+        //    else if (parameters.Count() == 1)
+        //    {
+
+        //        var createMethodInfo = typeof(HandleRegistrationExtensions).GetMethod(nameof(_HandleDependency), BindingFlags.Static | BindingFlags.NonPublic)
+        //            .MakeGenericMethod(new Type[] { typeof(T), parameters[0].ParameterType });
+
+        //        createMethodInfo.Invoke(null, new object[] { regs, methodInfo, method });
+
+        //    }
+
+        //}
+
+
+
+        //private static void _HandleCriteriaDep<T, C, D>(IHandleRegistrations<T> regs, MethodInfo methodInfo, ObjectPortalMethod method)
+        //{
+        //    var parameters = methodInfo.GetParameters();
+
+        //    // Method has dependencies
+        //    // Resolve each dependency
+
+        //    // Need to create (BusinessItem bo, Guid c) => bo.CreateChild(c)
+
+        //    if (parameters.Length == 2)
+        //    {
+
+        //        var createMethodInfo = CreateAction<T, C, D>(methodInfo);
+
+        //        regs.Add(method, new Handle<T, C, D>() { callMethod = createMethodInfo, method = method });
+
+        //        return;
+        //    }
+
+        //    throw new NotSupportedException("Only 2 parameter supported");
+
+        //}
+
+        private static void Handle<T>(IHandleRegistrations<T> regs, string methodName, ObjectPortalMethod method, bool? HasDependencies = null)
         {
 
 
-            var methodInfo = typeof(T).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+            var methodInfos = typeof(T).GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).Where(m => m.Name == methodName);
 
-            var parameters = methodInfo.GetParameters();
-
-            if (parameters.Count() == 0)
+            // TODO : Discuss and crush all my hopes and dreams...again.. ;-)
+            // If you have multiple methods with the same name...that's ok!
+            // Register each of them
+            foreach (var methodInfo in methodInfos)
             {
-                throw new Exception("Method must take at least 1 parameter of criteria");
-            }
-            else if (parameters.Count() == 1)
-            {
-                // Criteria only
 
-                Action<T, C> callMethod = null;
+                var parameters = methodInfo.GetParameters();
+                MethodInfo createMethodInfo = null;
 
-                callMethod = (T bo, C criteria) =>
+                if (parameters.Length < 1 || parameters.Length > 2)
                 {
-                    methodInfo.Invoke(bo, new object[] { criteria });
-                };
+                    throw new Exception($"{method.ToString()} must take 1 (Criteria or Dependency) or 2 (Criteria, Dependency) parameters");
+                }
+                else if (parameters.Length == 1)
+                {
+                    // If there is only one parameter we
+                    // and HasDependencies isn't set we use the
+                    // Container to see if the one parameter is a dependency
+                    // or a criteria
 
-                regs.Add(method, new HandleWithCriteria<T, C>() { callMethod = callMethod, method = ObjectPortalMethod.Create });
+                    if (!HasDependencies.HasValue)
+                    {
+                        HasDependencies = regs.IsRegistered(parameters[0].ParameterType);
+                    }
+
+                    // Criteria only
+                    if (!HasDependencies.Value)
+                    {
+                        createMethodInfo = typeof(HandleRegistrationExtensions).GetMethod(nameof(HandleCriteria), BindingFlags.Static | BindingFlags.NonPublic)
+                            .MakeGenericMethod(new Type[] { typeof(T), parameters[0].ParameterType });
+                    }
+                    else
+                    {
+                        createMethodInfo = typeof(HandleRegistrationExtensions).GetMethod(nameof(HandleDependency), BindingFlags.Static | BindingFlags.NonPublic)
+                            .MakeGenericMethod(new Type[] { typeof(T), parameters[0].ParameterType });
+                    }
+
+                }
+                else if (parameters.Length == 2)
+                {
+                    // Criteria and Dependencies
+
+                    createMethodInfo = typeof(HandleRegistrationExtensions).GetMethod(nameof(HandleCriteriaDependency), BindingFlags.Static | BindingFlags.NonPublic)
+                        .MakeGenericMethod(new Type[] { typeof(T), parameters[0].ParameterType, parameters[1].ParameterType });
 
 
-            }
-            else if (parameters.Count() == 2)
-            {
-                // Criteria and Dependencies
-
-                var createMethodInfo = typeof(HandleRegistrationExtensions).GetMethod(nameof(_HandleCriteriaDep), BindingFlags.Static | BindingFlags.NonPublic)
-                    .MakeGenericMethod(new Type[] { typeof(T), parameters[0].ParameterType, parameters[1].ParameterType });
+                }
 
                 createMethodInfo.Invoke(null, new object[] { regs, methodInfo, method });
-
             }
-
         }
 
-        public static void HandleCreate<T>(this IHandleRegistrations<T> regs, string methodName)
+        public static void Create<T>(this IHandleRegistrations<T> regs, string methodName)
         {
             Handle<T>(regs, methodName, ObjectPortalMethod.Create);
         }
 
-        public static void HandleCreate<T, C>(this IHandleRegistrations<T> regs, string methodName)
-        {
-            Handle<T, C>(regs, methodName, ObjectPortalMethod.Create);
-        }
-
-        public static void HandleCreate<T>(this IHandleRegistrations<T> regs, Action<T> a)
+        public static void Create<T>(this IHandleRegistrations<T> regs, Action<T> a)
         {
             regs.Add(ObjectPortalMethod.Create, new Handle<T>() { callMethod = a, method = ObjectPortalMethod.Create });
         }
 
-        public static void HandleCreateWithDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
+        public static void CreateDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
         {
-            regs.Add(ObjectPortalMethod.Create, new HandleDep<T, D>() { callMethod = a, method = ObjectPortalMethod.Create });
+            regs.Add(ObjectPortalMethod.Create, new HandleDependency<T, D>() { callMethod = a, method = ObjectPortalMethod.Create });
         }
 
-        public static void HandleCreate<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
+        public static void CreateCriteria<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
         {
-            regs.Add<C>(ObjectPortalMethod.Create, new HandleWithCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.Create });
+            regs.Add<C>(ObjectPortalMethod.Create, new HandleCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.Create });
         }
 
-        public static void HandleCreate<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
+        public static void CreateCriteria<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
         {
-            regs.Add<C>(ObjectPortalMethod.Create, new HandleWithCriteriaDep<T, C, D>() { callMethod = a, method = ObjectPortalMethod.Create });
+            regs.Add<C>(ObjectPortalMethod.Create, new Handle<T, C, D>() { callMethod = a, method = ObjectPortalMethod.Create });
         }
-        public static void HandleCreateChild<T>(this IHandleRegistrations<T> regs, Action<T> a)
+
+        public static void CreateChild<T>(this IHandleRegistrations<T> regs, string methodName)
+        {
+            Handle<T>(regs, methodName, ObjectPortalMethod.CreateChild);
+        }
+
+        public static void CreateChild<T>(this IHandleRegistrations<T> regs, Action<T> a)
         {
             regs.Add(ObjectPortalMethod.CreateChild, new Handle<T>() { callMethod = a, method = ObjectPortalMethod.CreateChild });
         }
 
-        public static void HandleCreateChild<T>(this IHandleRegistrations<T> regs, string methodName)
+        public static void CreateChildDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
         {
-            Handle(regs, methodName, ObjectPortalMethod.CreateChild);
+            regs.Add(ObjectPortalMethod.CreateChild, new HandleDependency<T, D>() { callMethod = a, method = ObjectPortalMethod.CreateChild });
         }
 
-        public static void HandleCreateChild<T, C>(this IHandleRegistrations<T> regs, string methodName)
+        public static void CreateChildCriteria<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
         {
-            Handle<T, C>(regs, methodName, ObjectPortalMethod.CreateChild);
+            regs.Add<C>(ObjectPortalMethod.CreateChild, new HandleCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.CreateChild });
         }
 
-        public static void HandleCreateChildWithDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
+        public static void CreateChildCriteria<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
         {
-            regs.Add(ObjectPortalMethod.CreateChild, new HandleDep<T, D>() { callMethod = a, method = ObjectPortalMethod.CreateChild });
+            regs.Add<C>(ObjectPortalMethod.CreateChild, new Handle<T, C, D>() { callMethod = a, method = ObjectPortalMethod.CreateChild });
         }
 
-        /// <summary>
-        /// Register the method to call on ObjectPortal.Create with criteria and no dependencies
-        /// </summary>
-        /// <typeparam name="T">Business Object</typeparam>
-        /// <typeparam name="C">Criteria</typeparam>
-        /// <param name="regs"></param>
-        /// <param name="a"></param>
-        public static void HandleCreateChild<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
+
+        public static void Fetch<T>(this IHandleRegistrations<T> regs, string methodName)
         {
-            regs.Add<C>(ObjectPortalMethod.CreateChild, new HandleWithCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.CreateChild });
+            Handle<T>(regs, methodName, ObjectPortalMethod.Fetch);
         }
 
-        public static void HandleCreateChild<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
-        {
-            regs.Add<C>(ObjectPortalMethod.CreateChild, new HandleWithCriteriaDep<T, C, D>() { callMethod = a, method = ObjectPortalMethod.CreateChild });
-        }
-
-        public static void HandleFetch<T>(this IHandleRegistrations<T> regs, Action<T> a)
+        public static void Fetch<T>(this IHandleRegistrations<T> regs, Action<T> a)
         {
             regs.Add(ObjectPortalMethod.Fetch, new Handle<T>() { callMethod = a, method = ObjectPortalMethod.Fetch });
         }
 
-        public static void HandleFetchWithDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
+        public static void FetchDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
         {
-            regs.Add(ObjectPortalMethod.Fetch, new HandleDep<T, D>() { callMethod = a, method = ObjectPortalMethod.Fetch });
+            regs.Add(ObjectPortalMethod.Fetch, new HandleDependency<T, D>() { callMethod = a, method = ObjectPortalMethod.Fetch });
         }
 
-        public static void HandleFetch<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
+        public static void FetchCriteria<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
         {
-            regs.Add<C>(ObjectPortalMethod.Fetch, new HandleWithCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.Fetch });
+            regs.Add<C>(ObjectPortalMethod.Fetch, new HandleCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.Fetch });
         }
 
-        public static void HandleFetch<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
+        public static void FetchCriteria<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
         {
-            regs.Add<C>(ObjectPortalMethod.Fetch, new HandleWithCriteriaDep<T, C, D>() { callMethod = a, method = ObjectPortalMethod.Fetch });
+            regs.Add<C>(ObjectPortalMethod.Fetch, new Handle<T, C, D>() { callMethod = a, method = ObjectPortalMethod.Fetch });
         }
-        public static void HandleFetchChild<T>(this IHandleRegistrations<T> regs, Action<T> a)
+
+        public static void FetchChild<T>(this IHandleRegistrations<T> regs, string methodName)
+        {
+            Handle<T>(regs, methodName, ObjectPortalMethod.FetchChild);
+        }
+
+        public static void FetchChild<T>(this IHandleRegistrations<T> regs, Action<T> a)
         {
             regs.Add(ObjectPortalMethod.FetchChild, new Handle<T>() { callMethod = a, method = ObjectPortalMethod.FetchChild });
         }
 
-        public static void HandleFetchChildWithDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
+        public static void FetchChildDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
         {
-            regs.Add(ObjectPortalMethod.FetchChild, new HandleDep<T, D>() { callMethod = a, method = ObjectPortalMethod.FetchChild });
+            regs.Add(ObjectPortalMethod.FetchChild, new HandleDependency<T, D>() { callMethod = a, method = ObjectPortalMethod.FetchChild });
         }
 
-        public static void HandleFetchChild<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
+        public static void FetchChildCriteria<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
         {
-            regs.Add<C>(ObjectPortalMethod.FetchChild, new HandleWithCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.FetchChild });
+            regs.Add<C>(ObjectPortalMethod.FetchChild, new HandleCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.FetchChild });
         }
 
-        public static void HandleFetchChild<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
+        public static void FetchChildCriteria<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
         {
-            regs.Add<C>(ObjectPortalMethod.FetchChild, new HandleWithCriteriaDep<T, C, D>() { callMethod = a, method = ObjectPortalMethod.FetchChild });
+            regs.Add<C>(ObjectPortalMethod.FetchChild, new Handle<T, C, D>() { callMethod = a, method = ObjectPortalMethod.FetchChild });
         }
 
-        public static void HandleUpdate<T>(this IHandleRegistrations<T> regs, Action<T> a)
-        {
-            regs.Add(ObjectPortalMethod.Update, new Handle<T>() { callMethod = a, method = ObjectPortalMethod.Update });
-        }
-
-        public static void HandleUpdateWithDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
-        {
-            regs.Add(ObjectPortalMethod.Update, new HandleDep<T, D>() { callMethod = a, method = ObjectPortalMethod.Update });
-        }
-
-        public static void HandleUpdate<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
-        {
-            regs.Add<C>(ObjectPortalMethod.Update, new HandleWithCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.Update });
-        }
-
-        public static void HandleUpdate<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
-        {
-            regs.Add<C>(ObjectPortalMethod.Update, new HandleWithCriteriaDep<T, C, D>() { callMethod = a, method = ObjectPortalMethod.Update });
-        }
-        public static void HandleUpdateChild<T>(this IHandleRegistrations<T> regs, Action<T> a)
-        {
-            regs.Add(ObjectPortalMethod.UpdateChild, new Handle<T>() { callMethod = a, method = ObjectPortalMethod.UpdateChild });
-        }
-
-        public static void HandleUpdateChildWithDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
-        {
-            regs.Add(ObjectPortalMethod.UpdateChild, new HandleDep<T, D>() { callMethod = a, method = ObjectPortalMethod.UpdateChild });
-        }
-
-        public static void HandleUpdateChild<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
-        {
-            regs.Add<C>(ObjectPortalMethod.UpdateChild, new HandleWithCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.UpdateChild });
-        }
-
-        public static void HandleUpdateChild<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
-        {
-            regs.Add<C>(ObjectPortalMethod.UpdateChild, new HandleWithCriteriaDep<T, C, D>() { callMethod = a, method = ObjectPortalMethod.UpdateChild });
-        }
-
-        public static void HandleInsert<T>(this IHandleRegistrations<T> regs, Action<T> a)
-        {
-            regs.Add(ObjectPortalMethod.Insert, new Handle<T>() { callMethod = a, method = ObjectPortalMethod.Insert });
-        }
-
-        public static void HandleInsertWithDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
-        {
-            regs.Add(ObjectPortalMethod.Insert, new HandleDep<T, D>() { callMethod = a, method = ObjectPortalMethod.Insert });
-        }
-
-        public static void HandleInsert<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
-        {
-            regs.Add<C>(ObjectPortalMethod.Insert, new HandleWithCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.Insert });
-        }
-
-        public static void HandleInsert<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
-        {
-            regs.Add<C>(ObjectPortalMethod.Insert, new HandleWithCriteriaDep<T, C, D>() { callMethod = a, method = ObjectPortalMethod.Insert });
-        }
-        public static void HandleInsertChild<T>(this IHandleRegistrations<T> regs, Action<T> a)
-        {
-            regs.Add(ObjectPortalMethod.InsertChild, new Handle<T>() { callMethod = a, method = ObjectPortalMethod.InsertChild });
-        }
-
-        public static void HandleInsertChildWithDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
-        {
-            regs.Add(ObjectPortalMethod.InsertChild, new HandleDep<T, D>() { callMethod = a, method = ObjectPortalMethod.InsertChild });
-        }
-
-        public static void HandleInsertChild<T, C>(this IHandleRegistrations<T> regs, Action<T, C> a)
-        {
-            regs.Add<C>(ObjectPortalMethod.InsertChild, new HandleWithCriteria<T, C>() { callMethod = a, method = ObjectPortalMethod.InsertChild });
-        }
-
-        public static void HandleInsertChild<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
-        {
-            regs.Add<C>(ObjectPortalMethod.InsertChild, new HandleWithCriteriaDep<T, C, D>() { callMethod = a, method = ObjectPortalMethod.InsertChild });
-        }
     }
 }

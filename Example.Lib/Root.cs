@@ -46,22 +46,22 @@ namespace Example.Lib
 
             // Same - still use Tuples for the dependencies and criteria
 
-            // regs.HandleCreate(nameof(Create)).RunLocal();
-            // regs.HandleCreate<Guid>(nameof(Create));
+            // regs.Create(nameof(Create)).RunLocal();
+            // regs.Create<Guid>(nameof(Create));
 
-            //regs.HandleCreate<Guid>((c, s) => Create(c, s.Resolve<IObjectPortal<IBusinessItemList>>()));
-            //regs.HandleCreate(s => Create(s.Resolve<IObjectPortal<IBusinessItemList>>()));
-
-
-            regs.HandleCreate<Root, Guid, IObjectPortal<IBusinessItemList>>((bo, c, d) => bo.Create(c, d));
-            regs.HandleCreateWithDependency<Root, IObjectPortal<IBusinessItemList>>((bo, d) => bo.Create(d));
+            //regs.Create<Guid>((c, s) => Create(c, s.Resolve<IObjectPortal<IBusinessItemList>>()));
+            //regs.Create(s => Create(s.Resolve<IObjectPortal<IBusinessItemList>>()));
 
 
-            regs.HandleFetchWithDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Fetch(d));
-            regs.HandleFetch((Root bo, Guid criteria, IObjectPortal<IBusinessItemList> d) => bo.Fetch(criteria, d));
+            regs.CreateCriteria<Root, Guid, IObjectPortal<IBusinessItemList>>((bo, c, d) => bo.Create(c, d));
+            regs.CreateDependency<Root, IObjectPortal<IBusinessItemList>>((bo, d) => bo.Create(d));
 
-            regs.HandleUpdateWithDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Update(d));
-            regs.HandleInsertWithDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Insert(d));
+
+            regs.FetchDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Fetch(d));
+            regs.FetchCriteria((Root bo, Guid criteria, IObjectPortal<IBusinessItemList> d) => bo.Fetch(criteria, d));
+
+            //regs.HandleUpdateWithDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Update(d));
+            //regs.HandleInsertWithDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Insert(d));
 
         }
 
@@ -85,7 +85,7 @@ namespace Example.Lib
             }
         }
 
-        // [HandleCreate]
+        // [Create]
         private void Create(Guid criteria, IObjectPortal<IBusinessItemList> op)
         {
             using (BypassPropertyChecks)

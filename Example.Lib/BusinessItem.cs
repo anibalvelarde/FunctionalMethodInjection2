@@ -26,15 +26,15 @@ namespace Example.Lib
 
         private static void Handle(IHandleRegistrations<BusinessItem> reg)
         {
-            reg.HandleCreate(nameof(CreateChild));
+            reg.Create(nameof(CreateChild));
 
-            reg.HandleCreateChild((BusinessItem bo, Guid c) => bo.CreateChild(c));
+            reg.CreateChildCriteria((BusinessItem bo, Guid c) => bo.CreateChild(c));
 
 
-            reg.HandleFetchChild((BusinessItem bo, BusinessItemDto d) => bo.FetchChild(d));
-            reg.HandleFetchChild((BusinessItem bo, System.Tuple<CriteriaBase, BusinessItemDto> d) => bo.FetchChild(d.Item1, d.Item2));
-            reg.HandleUpdateChild((BusinessItem bo, Guid criteria, IBusinessItemDal d) => bo.UpdateChild(criteria, d));
-            reg.HandleInsertChild((BusinessItem bo, Guid criteria, IBusinessItemDal d) => bo.InsertChild(criteria, d));
+            reg.FetchChildCriteria((BusinessItem bo, BusinessItemDto d) => bo.FetchChild(d));
+            reg.FetchChildCriteria((BusinessItem bo, System.Tuple<CriteriaBase, BusinessItemDto> d) => bo.FetchChild(d.Item1, d.Item2));
+            //reg.HandleUpdateChild((BusinessItem bo, Guid criteria, IBusinessItemDal d) => bo.UpdateChild(criteria, d));
+            //reg.HandleInsertChild((BusinessItem bo, Guid criteria, IBusinessItemDal d) => bo.InsertChild(criteria, d));
         }
 
         public static readonly PropertyInfo<string> NameProperty = RegisterProperty<string>(c => c.Name);
