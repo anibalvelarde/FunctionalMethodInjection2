@@ -21,7 +21,7 @@ namespace Example.Lib
         {
         }
 
-        private static void Handle(IHandleRegistrations<Root> regs)
+        internal static void Handle(IHandleRegistrations<Root> regs)
         {
             // TODO To Discuss
             // I think it would be best for this method to be static
@@ -60,8 +60,8 @@ namespace Example.Lib
             regs.FetchDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Fetch(d));
             regs.FetchCriteria((Root bo, Guid criteria, IObjectPortal<IBusinessItemList> d) => bo.Fetch(criteria, d));
 
-            //regs.HandleUpdateWithDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Update(d));
-            //regs.HandleInsertWithDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Insert(d));
+            regs.UpdateDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Update(d));
+            regs.InsertDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Insert(d));
 
         }
 

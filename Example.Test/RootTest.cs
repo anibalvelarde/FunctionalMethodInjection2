@@ -15,6 +15,12 @@ namespace Example.Test
         static IContainer container;
         ILifetimeScope scope;
 
+        delegate IRoot Test(int k);
+
+        public static IRoot TestDelegate(int k)
+        {
+            return (IRoot)null;
+        }
 
         [TestInitialize]
         public void TestInitialize()
@@ -26,6 +32,10 @@ namespace Example.Test
                 ContainerBuilder builder = new ContainerBuilder();
 
                 builder.RegisterModule<ObjectPortal.AutofacModuleServer>();
+                builder.Register<Test>(cc =>
+                {
+                    return (int i) => TestDelegate(i);
+                });
 
 
                 builder.RegisterType<RootDal>().AsImplementedInterfaces();
@@ -38,6 +48,15 @@ namespace Example.Test
             }
 
             scope = container.BeginLifetimeScope();
+
+        }
+
+        [TestMethod]
+        public void Delegeates()
+        {
+            var del = scope.Resolve<Test>();
+
+            del(1);
 
         }
 

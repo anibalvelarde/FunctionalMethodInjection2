@@ -20,13 +20,16 @@ namespace ObjectPortal
         Func<IMobileObjectWrapper<T>> createMobileObjectWrapper;
         ILifetimeScope scope;
 
+        DataPortal<IMobileObjectWrapper<T>> dataPortal;
+
         #endregion
 
         #region ctor
 
-        public ObjectPortal_DPWrapper(ILifetimeScope scope, Func<IMobileObjectWrapper<T>> createFunc)
+        public ObjectPortal_DPWrapper(ILifetimeScope scope, Func<IMobileObjectWrapper<T>> createFunc, DataPortal<IMobileObjectWrapper<T>> dataPortal)
         {
 
+            this.dataPortal = dataPortal;
             this.scope = scope;
 
             //first check T and see if we are getting and abstract or interface type - if we are - we can use the scope to resolve T
@@ -122,7 +125,7 @@ namespace ObjectPortal
             //}
             //else
             //{
-            retObj = DataPortal.Create<IMobileObjectWrapper<T>>();
+            retObj = dataPortal.Create();
             //}
 
             retObj.MobileDependencies.ForEach(x => x.ResetDependency(scope));
@@ -146,9 +149,14 @@ namespace ObjectPortal
             //retObj = DataPortal.Create<T>(criteria);
             //}
 
-            IMobileObjectWrapper<T, C> mow = scope.Resolve<IMobileObjectWrapper<T, C>>();
+            var dataPortalCriteria = scope.Resolve<DataPortal<IMobileObjectWrapper<T, C>>>();
 
-            var retObj = DataPortal.Create<IMobileObjectWrapper<T, C>>(criteria);
+            //IMobileObjectWrapper<T, C> mow = scope.Resolve<IMobileObjectWrapper<T, C>>();
+
+            //var retObj = DataPortal.Create<IMobileObjectWrapper<T, C>>(criteria);
+
+            // TODO - Discuss injection DataPortal
+            var retObj = dataPortalCriteria.Create(criteria);
 
             retObj.MobileDependencies.ForEach(x => x.ResetDependency(scope));
 

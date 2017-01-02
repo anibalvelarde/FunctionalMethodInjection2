@@ -59,7 +59,7 @@ namespace ObjectPortal
 
             var regs = CreateHandleRegistrations(result);
 
-            regs.TryExecuteMethod(result, ObjectPortalMethod.Create, scope);
+            regs.TryExecuteMethod(result, Operation.Create, scope);
 
             return result;
         }
@@ -74,7 +74,7 @@ namespace ObjectPortal
 
             var regs = CreateHandleRegistrations(result);
 
-            if (!regs.TryExecuteMethod(result, ObjectPortalMethod.Create, scope, criteria))
+            if (!regs.TryExecuteMethod(result, Operation.Create, scope, criteria))
             {
                 throw new ObjectPortalOperationNotSupportedException($"CreateChild with criteria {criteria.GetType().FullName} not supported on {result.GetType().FullName}");
             }
@@ -93,7 +93,7 @@ namespace ObjectPortal
 
             var regs = CreateHandleRegistrations(result);
 
-            regs.TryExecuteMethod(result, ObjectPortalMethod.CreateChild, scope);
+            regs.TryExecuteMethod(result, Operation.CreateChild, scope);
 
             return result;
         }
@@ -108,7 +108,7 @@ namespace ObjectPortal
 
             var regs = CreateHandleRegistrations(result);
 
-            if (!regs.TryExecuteMethod(result, ObjectPortalMethod.CreateChild, scope, criteria))
+            if (!regs.TryExecuteMethod(result, Operation.CreateChild, scope, criteria))
             {
                 throw new ObjectPortalOperationNotSupportedException($"CreateChild with criteria {criteria.GetType().FullName} not supported on {result.GetType().FullName}");
             }
@@ -127,7 +127,7 @@ namespace ObjectPortal
 
             var regs = CreateHandleRegistrations(result);
 
-            regs.TryExecuteMethod(result, ObjectPortalMethod.Fetch, scope);
+            regs.TryExecuteMethod(result, Operation.Fetch, scope);
 
             return result;
         }
@@ -142,7 +142,7 @@ namespace ObjectPortal
 
             var regs = CreateHandleRegistrations(result);
 
-            if (!regs.TryExecuteMethod(result, ObjectPortalMethod.Fetch, scope, criteria))
+            if (!regs.TryExecuteMethod(result, Operation.Fetch, scope, criteria))
             {
                 throw new ObjectPortalOperationNotSupportedException($"FetchChild with criteria {criteria.GetType().FullName} not supported on {result.GetType().FullName}");
             }
@@ -161,7 +161,7 @@ namespace ObjectPortal
 
             var regs = CreateHandleRegistrations(result);
 
-            regs.TryExecuteMethod(result, ObjectPortalMethod.FetchChild, scope);
+            regs.TryExecuteMethod(result, Operation.FetchChild, scope);
 
             return result;
         }
@@ -176,7 +176,7 @@ namespace ObjectPortal
 
             var regs = CreateHandleRegistrations(result);
 
-            if (!regs.TryExecuteMethod(result, ObjectPortalMethod.FetchChild, scope, criteria))
+            if (!regs.TryExecuteMethod(result, Operation.FetchChild, scope, criteria))
             {
                 throw new ObjectPortalOperationNotSupportedException($"FetchChild with criteria {criteria.GetType().FullName} not supported on {result.GetType().FullName}");
             }
@@ -193,15 +193,15 @@ namespace ObjectPortal
             if (bo.IsDirty)
             {
                 var regs = CreateHandleRegistrations(bo);
-                ObjectPortalMethod? method = null;
+                Operation? method = null;
 
                 if (bo.IsNew)
                 {
-                    method = ObjectPortalMethod.Insert;
+                    method = Operation.Insert;
                 }
                 else
                 {
-                    method = ObjectPortalMethod.Update;
+                    method = Operation.Update;
                 }
 
                 if (!regs.TryExecuteMethod(bo, method.Value, scope))
@@ -223,15 +223,15 @@ namespace ObjectPortal
             if (bo.IsDirty)
             {
                 var regs = CreateHandleRegistrations(bo);
-                ObjectPortalMethod? method = null;
+                Operation? method = null;
 
                 if (bo.IsNew)
                 {
-                    method = ObjectPortalMethod.InsertChild;
+                    method = Operation.InsertChild;
                 }
                 else
                 {
-                    method = ObjectPortalMethod.UpdateChild;
+                    method = Operation.UpdateChild;
                 }
 
                 if (!regs.TryExecuteMethod(bo, method.Value, scope))
@@ -251,15 +251,15 @@ namespace ObjectPortal
             if (bo.IsDirty)
             {
                 var regs = CreateHandleRegistrations(bo);
-                ObjectPortalMethod? method = null;
+                Operation? method = null;
 
                 if (bo.IsNew)
                 {
-                    method = ObjectPortalMethod.InsertChild;
+                    method = Operation.InsertChild;
                 }
                 else
                 {
-                    method = ObjectPortalMethod.UpdateChild;
+                    method = Operation.UpdateChild;
                 }
 
                 if (!regs.TryExecuteMethod(bo, method.Value, scope, criteria))

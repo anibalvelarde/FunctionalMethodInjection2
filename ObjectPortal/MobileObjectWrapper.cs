@@ -25,10 +25,14 @@ namespace ObjectPortal
 
     internal interface IMobileObjectWrapper<T, C> : IMobileObjectWrapper<T>
     { }
+    
 
-
+    /// <summary>
+    /// Wrap each ObjectPortal call - the returned business object and the list of MobileDependencies created
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     [Serializable]
-    internal class MobileObjectWrapper<T> : Csla.Core.MobileObject, IMobileObjectWrapper<T>
+        internal class MobileObjectWrapper<T> : Csla.Core.MobileObject, IMobileObjectWrapper<T>
         where T : IMobileObject, ITrackStatus
     {
 
@@ -114,6 +118,9 @@ namespace ObjectPortal
 
     }
 
+    /// <summary>
+    /// Wrap each ObjectPortal call - the returned business object and the list of MobileDependencies created
+    /// </summary>
     [Serializable]
     internal class MobileObjectWrapper<T, C> : MobileObjectWrapper<T>, IMobileObjectWrapper<T, C>
         where T : IMobileObject, ITrackStatus

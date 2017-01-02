@@ -8,30 +8,15 @@ using Csla.Server;
 
 namespace ObjectPortal
 {
-    public class AutofacModuleClient : Autofac.Module
+    public class AutofacModuleClient : AutofacModuleServer
     {
 
         protected override void Load(ContainerBuilder builder)
         {
             base.Load(builder);
 
+            // Only difference
             builder.RegisterGeneric(typeof(ObjectPortal_DPWrapper<>)).As(typeof(IObjectPortal<>));
-            builder.RegisterGeneric(typeof(HandleRegistrations<>)).As(typeof(IHandleRegistrations<>)).SingleInstance();
-            builder.RegisterGeneric(typeof(MobileDependency<>))
-                .As(typeof(IMobileDependency<>));
-
-            builder.RegisterGeneric(typeof(MobileObjectWrapper<>))
-                .As(typeof(IMobileObjectWrapper<>));
-
-            builder.RegisterGeneric(typeof(MobileObjectWrapper<,>))
-                .As(typeof(IMobileObjectWrapper<,>));
-
-            builder.RegisterType<ObjectPortalActivator>().As<IDataPortalActivator>();
-
-            builder.RegisterType<MobileDependencyList>()
-                .AsSelf()
-                .InstancePerLifetimeScope();
-
 
         }
 

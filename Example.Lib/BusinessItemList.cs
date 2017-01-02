@@ -22,13 +22,12 @@ namespace Example.Lib
 
         }
 
-        private static void Handle(IHandleRegistrations<BusinessItemList> regs)
+        internal static void Handle(IHandleRegistrations<BusinessItemList> regs)
         {
             //regs.CreateChildWithDependency((BusinessItemList bo, System.Tuple<IObjectPortal<IBusinessItem>, IMobileDependency<IObjectPortal<IBusinessItem>>> d) 
             //    => bo.CreateChild(d.Item1, d.Item2));
 
-            regs.CreateChild(nameof(CreateChildNoCriteria));
-
+            
             // TODO : Discuss
             // Hmmm...if this wasn't a static method would that be better??
             // Could just send in the method signatures
@@ -39,18 +38,18 @@ namespace Example.Lib
             //    => bo.CreateChildGuid(criteria, d));
 
             // TODO Discuss - Cleaner then above
-            regs.CreateChild(nameof(CreateChildGuid));
+            regs.CreateChild(nameof(CreateChild));
 
             //regs.FetchChildDependency((BusinessItemList bo, System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal, IMobileDependency<IObjectPortal<IBusinessItem>>> d)
             //   => bo.FetchChild(d.Item1, d.Item2, d.Item3));
             regs.FetchChild(nameof(FetchChild));
 
             //regs.FetchChildCriteria((BusinessItemList bo, Criteria criteria, System.Tuple<IObjectPortal<IBusinessItem>, IBusinessItemDal, IMobileDependency<IObjectPortal<IBusinessItem>>> d)
-             //   => bo.FetchChild(criteria, d.Item1, d.Item2, d.Item3));
+            //   => bo.FetchChild(criteria, d.Item1, d.Item2, d.Item3));
 
-           // regs.HandleUpdateChildWithDependency((BusinessItemList bo, IObjectPortal<IBusinessItem> d) => bo.UpdateChild(d));
+            regs.UpdateChildDependency((BusinessItemList bo, IObjectPortal<IBusinessItem> d) => bo.UpdateChild(d));
             // TODO : Discuss - Same method. Assume this will be handled by the replacement for FieldManager.UpdateChildren() since it is a list
-            //regs.HandleInsertChildWithDependency((BusinessItemList bo, IObjectPortal<IBusinessItem> d) => bo.UpdateChild(d));
+            regs.InsertChildDependency((BusinessItemList bo, IObjectPortal<IBusinessItem> d) => bo.UpdateChild(d));
 
         }
 
@@ -66,13 +65,13 @@ namespace Example.Lib
         // If we had properties on Lists I think we could transfer this as a CSLA Property
         IMobileDependency<IObjectPortal<IBusinessItem>> _newChild;
 
-        public void CreateChildNoCriteria(System.Tuple<IObjectPortal<IBusinessItem>, IMobileDependency<IObjectPortal<IBusinessItem>>> newChild)
+        public void CreateChild(System.Tuple<IObjectPortal<IBusinessItem>, IMobileDependency<IObjectPortal<IBusinessItem>>> newChild)
         {
             this.Add(newChild.Item1.CreateChild());
             this._newChild = newChild.Item2;
         }
 
-        public void CreateChildGuid(Guid criteria, IObjectPortal<IBusinessItem> op)
+        public void CreateChild(Guid criteria, IObjectPortal<IBusinessItem> op)
         {
             this.Add(op.CreateChild(criteria));
         }

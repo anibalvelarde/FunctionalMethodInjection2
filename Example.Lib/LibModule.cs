@@ -19,6 +19,12 @@ namespace Example.Lib
             builder.RegisterType<BusinessItem>().As<IBusinessItem>().AsSelf();
             builder.RegisterType<BusinessItemList>().As<IBusinessItemList>().AsSelf();
 
+            // TODO Discuss
+            // Try to use as little reflection as possible
+            // Let DI do the heavy lifting
+            builder.Register<LoadHandleRegistrations<Root>>(cc => (r) => Root.Handle(r));
+            builder.Register<LoadHandleRegistrations<BusinessItemList>>(cc => (r) => BusinessItemList.Handle(r));
+            builder.Register<LoadHandleRegistrations<BusinessItem>>(cc => (r) => BusinessItem.Handle(r));
 
             // Need to find a way to make this generic
             // Delegates and generics do not play nice together!!
