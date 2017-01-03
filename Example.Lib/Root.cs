@@ -53,12 +53,12 @@ namespace Example.Lib
             //regs.Create(s => Create(s.Resolve<IObjectPortal<IBusinessItemList>>()));
 
 
-            regs.CreateCriteria<Root, Guid, IObjectPortal<IBusinessItemList>>((bo, c, d) => bo.Create(c, d));
+            regs.Create<Root, Guid, IObjectPortal<IBusinessItemList>>((bo, c, d) => bo.Create(c, d));
             regs.CreateDependency<Root, IObjectPortal<IBusinessItemList>>((bo, d) => bo.Create(d));
 
 
             regs.FetchDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Fetch(d));
-            regs.FetchCriteria((Root bo, Guid criteria, IObjectPortal<IBusinessItemList> d) => bo.Fetch(criteria, d));
+            regs.Fetch((Root bo, Guid criteria, IObjectPortal<IBusinessItemList> d) => bo.Fetch(criteria, d));
 
             regs.UpdateDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Update(d));
             regs.InsertDependency((Root bo, IObjectPortal<IBusinessItemList> d) => bo.Insert(d));

@@ -22,7 +22,6 @@ namespace ObjectPortal
     }
 
     [Serializable]
-    [KnownType(typeof(IObjectPortal<>))]
     internal class MobileDependency<T> : Csla.Core.MobileObject, IMobileDependency<T>, IMobileDependency
     {
 

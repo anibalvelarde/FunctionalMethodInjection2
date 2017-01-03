@@ -234,9 +234,9 @@ namespace ObjectPortal
             // Try to use as little reflection as possible
             // Let DI do the heavy lifting
 
-            var load = rootContainer.ResolveOptional<LoadHandleRegistrations<T>>();
+            LoadHandleRegistrations<T> load;
 
-            if (load == null)
+            if (!rootContainer.TryResolve<LoadHandleRegistrations<T>>(out load))
             {
                 throw new Exception($"You must register a LoadHandleRegistration<{typeof(T).FullName}> in the container;");
             }
@@ -291,7 +291,28 @@ namespace ObjectPortal
 
             var newRegs = rootContainer.Resolve<HandleRegistrationFromMethodName>()(operation, methodName, hasDependencies, typeof(T), rootContainer);
 
-            regs.AddRange(newRegs);
+            foreach (var newReg in newRegs)
+            {
+
+                var reg = newReg as IHandleRegistration<T>;
+                var regCriteria = newReg as IHandleRegistrationCriteria<T>;
+
+                // Still need to check that we aren't creating duplicates
+                // for a single operation
+
+                if (reg != null)
+                {
+                    this.Add(reg);
+                }
+                else if (regCriteria != null)
+                {
+                    this.Add(regCriteria);
+                }
+                else
+                {
+                    throw new NotImplementedException($"Unexpected type {newReg.GetType().FullName}");
+                }
+            }
 
             //var methodInfos = typeof(T).GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).Where(m => m.Name == methodName);
 
@@ -364,23 +385,47 @@ namespace ObjectPortal
 
         }
 
-        public void Add(Operation operation, Action<T> action)
+        public void Add(IHandleRegistration<T> reg)
         {
-            IHandleRegistration<T> reg = rootContainer.Resolve<Func<Operation, Action<T>, IHandleRegistration<T>>>()(operation, action);
-
-            if (regs.OfType<IHandleRegistration<T>>().Where(r => r.Operation == operation).FirstOrDefault() != null)
+            if (regs.OfType<IHandleRegistration<T>>().Where(r => r.Operation == reg.Operation).FirstOrDefault() != null)
             {
-                throw new ObjectPortalOperationNotSupportedException($"Key is already present in registrations {operation.ToString()}");
+                throw new ObjectPortalOperationNotSupportedException($"Key is already present in registrations {reg.Operation.ToString()}");
             }
 
             regs.Add(reg);
 
         }
 
+        public void Add(IHandleRegistrationCriteria<T> reg)
+        {
+            if (regs.OfType<IHandleRegistrationCriteria<T>>().Where(r => r.Operation == reg.Operation && r.CriteriaType == reg.CriteriaType).FirstOrDefault() != null)
+            {
+                throw new ObjectPortalOperationNotSupportedException($"Key is already present in registrations {reg.Operation.ToString()} with type ${reg.CriteriaType.FullName}");
+            }
+
+
+            regs.Add(reg);
+        }
+
+        public void Add(Operation operation, Action<T> action)
+        {
+            IHandleRegistration<T> reg = rootContainer.Resolve<Func<Operation, Action<T>, IHandleRegistration<T>>>()(operation, action);
+
+            Add(reg);
+        }
+
         public void Add<CD>(Operation operation, Action<T, CD> action)
         {
-            // Not defined whether it is criteria or dependency
-            throw new NotImplementedException();
+
+            if (rootContainer.IsRegistered<CD>())
+            {
+                AddDependency(operation, action);
+            }
+            else
+            {
+                AddCriteria(operation, action);
+            }
+
         }
 
 
@@ -389,14 +434,8 @@ namespace ObjectPortal
 
             IHandleRegistrationCriteria<T, C> reg = rootContainer.Resolve<Func<Operation, Action<T, C>, IHandleRegistrationCriteria<T, C>>>()(operation, action);
 
+            Add(reg);
 
-            if (regs.OfType<IHandleRegistrationCriteria<T, C>>().Where(r => r.Operation == operation).FirstOrDefault() != null)
-            {
-                throw new ObjectPortalOperationNotSupportedException($"Key is already present in registrations {operation.ToString()} with type ${typeof(C).FullName}");
-            }
-
-
-            regs.Add(reg);
         }
 
 
@@ -405,14 +444,7 @@ namespace ObjectPortal
 
             IHandleRegistrationDependency<T, D> reg = rootContainer.Resolve<Func<Operation, Action<T, D>, IHandleRegistrationDependency<T, D>>>()(operation, action);
 
-
-            if (regs.OfType<IHandleRegistrationDependency<T, D>>().Where(r => r.Operation == operation).FirstOrDefault() != null)
-            {
-                throw new ObjectPortalOperationNotSupportedException($"Key is already present in registrations {operation.ToString()} with type ${typeof(D).FullName}");
-            }
-
-
-            regs.Add(reg);
+            Add(reg);
         }
 
         public void Add<C, D>(Operation operation, Action<T, C, D> action)
@@ -420,14 +452,7 @@ namespace ObjectPortal
 
             IHandleRegistration<T, C, D> reg = rootContainer.Resolve<Func<Operation, Action<T, C, D>, IHandleRegistration<T, C, D>>>()(operation, action);
 
-
-            if (regs.OfType<IHandleRegistrationCriteria<T, C>>().Where(r => r.Operation == operation).FirstOrDefault() != null)
-            {
-                throw new ObjectPortalOperationNotSupportedException($"Key is already present in registrations {operation.ToString()} with type ${typeof(C).FullName}");
-            }
-
-
-            regs.Add(reg);
+            Add(reg);
         }
 
 
@@ -664,6 +689,18 @@ namespace ObjectPortal
             regs.Add(Operation.Create, a);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T">Business object type</typeparam>
+        /// <typeparam name="CD">If registered in the container it is considered a dependency, if not it is considered a criteria</typeparam>
+        /// <param name="regs"></param>
+        /// <param name="a"></param>
+        public static void Create<T, CD>(this IHandleRegistrations<T> regs, Action<T, CD> a)
+        {
+            regs.Add(Operation.Create, a);
+        }
+
         public static void CreateDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
         {
             regs.AddDependency(Operation.Create, a);
@@ -674,7 +711,7 @@ namespace ObjectPortal
             regs.AddCriteria(Operation.Create, a);
         }
 
-        public static void CreateCriteria<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
+        public static void Create<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
         {
             regs.Add(Operation.Create, a);
         }
@@ -690,6 +727,19 @@ namespace ObjectPortal
             regs.Add(Operation.CreateChild, a);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T">Business object type</typeparam>
+        /// <typeparam name="CD">If registered in the container it is considered a dependency, if not it is considered a criteria</typeparam>
+        /// <param name="regs"></param>
+        /// <param name="a"></param>
+        public static void CreateChild<T, CD>(this IHandleRegistrations<T> regs, Action<T, CD> a)
+        {
+            regs.Add(Operation.CreateChild, a);
+        }
+
+
         public static void CreateChildDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
         {
             regs.AddDependency(Operation.CreateChild, a);
@@ -700,10 +750,12 @@ namespace ObjectPortal
             regs.AddCriteria(Operation.CreateChild, a);
         }
 
-        public static void CreateChildCriteria<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
+        public static void CreateChild<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
         {
             regs.Add(Operation.CreateChild, a);
         }
+
+
 
         public static void Fetch<T>(this IHandleRegistrations<T> regs, string methodName)
         {
@@ -715,6 +767,19 @@ namespace ObjectPortal
             regs.Add(Operation.Fetch, a);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T">Business object type</typeparam>
+        /// <typeparam name="CD">If registered in the container it is considered a dependency, if not it is considered a criteria</typeparam>
+        /// <param name="regs"></param>
+        /// <param name="a"></param>
+        public static void Fetch<T, CD>(this IHandleRegistrations<T> regs, Action<T, CD> a)
+        {
+            regs.Add(Operation.Fetch, a);
+        }
+
+
         public static void FetchDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
         {
             regs.AddDependency(Operation.Fetch, a);
@@ -725,7 +790,7 @@ namespace ObjectPortal
             regs.AddCriteria(Operation.Fetch, a);
         }
 
-        public static void FetchCriteria<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
+        public static void Fetch<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
         {
             regs.Add(Operation.Fetch, a);
         }
@@ -741,6 +806,19 @@ namespace ObjectPortal
             regs.Add(Operation.FetchChild, a);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T">Business object type</typeparam>
+        /// <typeparam name="CD">If registered in the container it is considered a dependency, if not it is considered a criteria</typeparam>
+        /// <param name="regs"></param>
+        /// <param name="a"></param>
+        public static void FetchChild<T, CD>(this IHandleRegistrations<T> regs, Action<T, CD> a)
+        {
+            regs.Add(Operation.FetchChild, a);
+        }
+
+
         public static void FetchChildDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
         {
             regs.AddDependency(Operation.FetchChild, a);
@@ -751,7 +829,7 @@ namespace ObjectPortal
             regs.AddCriteria(Operation.FetchChild, a);
         }
 
-        public static void FetchChildCriteria<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
+        public static void FetchChild<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
         {
             regs.Add(Operation.FetchChild, a);
         }
@@ -767,6 +845,18 @@ namespace ObjectPortal
             regs.Add(Operation.Update, a);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T">Business object type</typeparam>
+        /// <typeparam name="CD">If registered in the container it is considered a dependency, if not it is considered a criteria</typeparam>
+        /// <param name="regs"></param>
+        /// <param name="a"></param>
+        public static void Update<T, CD>(this IHandleRegistrations<T> regs, Action<T, CD> a)
+        {
+            regs.Add(Operation.Update, a);
+        }
+
         public static void UpdateDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
         {
             regs.AddDependency(Operation.Update, a);
@@ -777,7 +867,7 @@ namespace ObjectPortal
             regs.AddCriteria(Operation.Update, a);
         }
 
-        public static void UpdateCriteria<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
+        public static void Update<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
         {
             regs.Add(Operation.Update, a);
         }
@@ -793,6 +883,18 @@ namespace ObjectPortal
             regs.Add(Operation.UpdateChild, a);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T">Business object type</typeparam>
+        /// <typeparam name="CD">If registered in the container it is considered a dependency, if not it is considered a criteria</typeparam>
+        /// <param name="regs"></param>
+        /// <param name="a"></param>
+        public static void UpdateChild<T, CD>(this IHandleRegistrations<T> regs, Action<T, CD> a)
+        {
+            regs.Add(Operation.UpdateChild, a);
+        }
+
         public static void UpdateChildDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
         {
             regs.AddDependency(Operation.UpdateChild, a);
@@ -803,7 +905,7 @@ namespace ObjectPortal
             regs.AddCriteria(Operation.UpdateChild, a);
         }
 
-        public static void UpdateChildCriteria<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
+        public static void UpdateChild<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
         {
             regs.Add(Operation.UpdateChild, a);
         }
@@ -819,6 +921,18 @@ namespace ObjectPortal
             regs.Add(Operation.Insert, a);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T">Business object type</typeparam>
+        /// <typeparam name="CD">If registered in the container it is considered a dependency, if not it is considered a criteria</typeparam>
+        /// <param name="regs"></param>
+        /// <param name="a"></param>
+        public static void Insert<T, CD>(this IHandleRegistrations<T> regs, Action<T, CD> a)
+        {
+            regs.Add(Operation.Insert, a);
+        }
+
         public static void InsertDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
         {
             regs.AddDependency(Operation.Insert, a);
@@ -829,7 +943,7 @@ namespace ObjectPortal
             regs.AddCriteria(Operation.Insert, a);
         }
 
-        public static void InsertCriteria<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
+        public static void Insert<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
         {
             regs.Add(Operation.Insert, a);
         }
@@ -845,6 +959,18 @@ namespace ObjectPortal
             regs.Add(Operation.InsertChild, a);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T">Business object type</typeparam>
+        /// <typeparam name="CD">If registered in the container it is considered a dependency, if not it is considered a criteria</typeparam>
+        /// <param name="regs"></param>
+        /// <param name="a"></param>
+        public static void InsertChild<T, CD>(this IHandleRegistrations<T> regs, Action<T, CD> a)
+        {
+            regs.Add(Operation.InsertChild, a);
+        }
+
         public static void InsertChildDependency<T, D>(this IHandleRegistrations<T> regs, Action<T, D> a)
         {
             regs.AddDependency(Operation.InsertChild, a);
@@ -855,7 +981,7 @@ namespace ObjectPortal
             regs.AddCriteria(Operation.InsertChild, a);
         }
 
-        public static void InsertChildCriteria<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
+        public static void InsertChild<T, C, D>(this IHandleRegistrations<T> regs, Action<T, C, D> a)
         {
             regs.Add(Operation.InsertChild, a);
         }
